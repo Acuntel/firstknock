@@ -1,0 +1,6 @@
+packages:
+  - "worker"
+# esbuild backs both tsx and vitest. Its install script links the prebuilt
+# platform binary, so the toolchain does not run without it.
+allowBuilds:
+  esbuild: true

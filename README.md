@@ -35,11 +35,40 @@ Launch verticals (each is a config preset, not a fork):
 | `ben/TELEGRAM_SETUP.md`  | BotFather to production wiring, connect flow, gotchas                                                                                | Ben 4    |
 | `ben/EMAIL_BOT_SAUCE.md` | The outreach-bot recipe: architecture, filters, ops rhythm, agent prompt                                                             | Ben 5    |
 
+| `docs/OPEN_QUESTIONS.md` | Decisions waiting on Brady, with the evidence behind each one | Brady |
+| `supabase/migrations/` | Schema and row level security policies | Code |
+| `worker/` | Adapter registry, county packs, and the ingest run | Code |
+
 ## Current status (August 2026)
 
-- Product is at spec stage: no application code in this repo yet. The spec is complete enough to start Phase 1 today.
+- Phase 1 (data spine) is built: schema, RLS, the adapter registry, and the Cook County sales and permits adapters, with 50 tests covering them. Both adapters pull live data from the county API. Nothing has run against a real Supabase project yet because there is no project to point at. See `docs/OPEN_QUESTIONS.md`.
 - A first outreach campaign ran against the thesis: cold-email drafts to named decision makers at restoration, investor, roofing, and law-firm companies nationally (10 drafted so far, campaign paused). Early interest replies will become design partners.
 - Warm first-tenant candidates already exist from Brady's client network in all four verticals.
+
+## Running it locally
+
+Requires Node 20 or newer and pnpm.
+
+```bash
+pnpm install
+pnpm test        # 50 tests, no network and no database needed
+pnpm typecheck
+```
+
+The test suite runs the migrations against an in-process Postgres, so the row level
+security policies are exercised for real without Docker or a Supabase project.
+
+Once a Supabase project exists, copy `env.example` to `.env`, apply the migrations in
+`supabase/migrations/`, then:
+
+```bash
+pnpm worker:seed-sources   # one sources row per registered adapter
+pnpm worker:once           # poll every enabled source once
+```
+
+Running `pnpm worker:once` twice inserts zero duplicate events. That is the property
+the dedupe hash exists to guarantee, and `worker/tests/ingest-idempotency.test.ts`
+holds it in place.
 
 ## Ground rules
 

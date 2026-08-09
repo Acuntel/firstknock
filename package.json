@@ -1,0 +1,19 @@
+{
+  "name": "firstknock",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Know first. Knock first. County public records to scored leads.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "worker:once": "pnpm --filter @firstknock/worker run once",
+    "worker:seed-sources": "pnpm --filter @firstknock/worker run seed-sources",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@11.21.0"
+}
