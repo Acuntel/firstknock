@@ -1,4 +1,10 @@
-import type { CountyAdapter, EventParty, PropertyEvent, RawRecord } from "../types";
+import type {
+  CountyAdapter,
+  EventParty,
+  PropertyCategory,
+  PropertyEvent,
+  RawRecord,
+} from "../types";
 import { fetchSocrata } from "../lib/socrata";
 import { num, parcelPin, socrataDate, squish, str } from "../lib/parse";
 
@@ -18,6 +24,22 @@ function townName(value: unknown): string | undefined {
   if (!raw) return undefined;
   const stripped = raw.replace(/^(VILLAGE|CITY|TOWN|TOWNSHIP)\s+OF\s+/i, "");
   return stripped.length > 0 ? stripped : undefined;
+}
+
+/**
+ * Cook permits carry no assessor class, but job_code_primary states the use
+ * type outright. Counts across the full feed: 536,647 residential, 93,323
+ * commercial, 14,781 exempt, and a long tail. Anything not clearly one of these
+ * is left undefined so the scorer treats it as unknown rather than guessing.
+ */
+function permitCategory(value: unknown): PropertyCategory | undefined {
+  const raw = squish(value)?.toUpperCase();
+  if (!raw) return undefined;
+  if (raw.includes("RESIDENTIAL")) return "residential";
+  if (raw.includes("COMMERCIAL") || raw.includes("OFFICE")) return "commercial";
+  if (raw.includes("RAILROAD")) return "industrial";
+  if (raw.includes("EXEMPT")) return "nonprofit";
+  return undefined;
 }
 
 /**
@@ -148,6 +170,7 @@ export const cookPermitsAdapter: CountyAdapter = {
         state: "IL",
         zip,
         parcelPin: pin,
+        category: permitCategory(record["job_code_primary"]),
       },
       parties,
       raw: record,

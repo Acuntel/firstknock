@@ -9,6 +9,7 @@
   "scripts": {
     "worker:once": "pnpm --filter @firstknock/worker run once",
     "worker:seed-sources": "pnpm --filter @firstknock/worker run seed-sources",
+    "worker:seed-tenants": "pnpm --filter @firstknock/worker run seed-tenants",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck"
   },

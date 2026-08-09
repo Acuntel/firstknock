@@ -1,0 +1,61 @@
+{
+  "id": "investors",
+  "label": "Real Estate Investors",
+  "eventTypes": [
+    "LIS_PENDENS",
+    "JUDGMENT",
+    "NOTICE_OF_SALE",
+    "TAX_DELINQUENT",
+    "SALE"
+  ],
+  "weights": {
+    "eventSeverity": {
+      "NOTICE_OF_SALE": 95,
+      "LIS_PENDENS": 85,
+      "JUDGMENT": 80,
+      "TAX_DELINQUENT": 70,
+      "SALE": 35,
+      "PERMIT": 20,
+      "FIRE_INCIDENT": 30,
+      "HOA_REGISTRATION": 15
+    },
+    "freshnessHalfLifeHours": 72,
+    "freshnessHalfLifeByType": {
+      "SALE": 2160,
+      "TAX_DELINQUENT": 720,
+      "PERMIT": 336
+    },
+    "valueGap": 0.25,
+    "propertyClassFit": {
+      "residential": 1.2,
+      "multifamily": 1.0,
+      "commercial": 0.6,
+      "industrial": 0.5,
+      "vacant": 0.8,
+      "nonprofit": 0.4,
+      "unknown": 1.0
+    },
+    "distanceDecayMiles": 40,
+    "absenteeOwnerBonus": 0.15,
+    "foreclosureStage": {
+      "enabled": true,
+      "windows": [
+        { "maxDaysToSale": 30, "multiplier": 1.35 },
+        { "maxDaysToSale": 60, "multiplier": 1.2 },
+        { "maxDaysToSale": 90, "multiplier": 1.1 }
+      ],
+      "pastSaleMultiplier": 0.4
+    }
+  },
+  "digest": {
+    "subject": "Your {county} distressed properties today",
+    "leadNoun": "property",
+    "topN": 10
+  },
+  "outreach": {
+    "emailTemplate": "investors_v1",
+    "letterTemplate": "investors_letter_v1",
+    "doorScript": "investors_door_v1"
+  },
+  "hotPingDefault": 85
+}

@@ -28,6 +28,19 @@ export interface EventParty {
   address?: string;
 }
 
+/**
+ * How a property is used, which is what the vertical presets weight against.
+ * Counties express this in incompatible ways, so adapters normalize to this.
+ */
+export type PropertyCategory =
+  | "residential"
+  | "multifamily"
+  | "commercial"
+  | "industrial"
+  | "vacant"
+  | "nonprofit"
+  | "unknown";
+
 export interface EventProperty {
   address?: string;
   city?: string;
@@ -39,6 +52,14 @@ export interface EventProperty {
   lng?: number;
   /** County property class code, used by the vertical fit weighting. */
   class?: string;
+  /**
+   * Use type stated by the source directly, when it says so without a class
+   * code. Cook's permit feed is the case that forced this: permits carry no
+   * assessor class at all, but they do say "COMMERCIAL PERMIT", and without
+   * reading that a roofer's commercial permit weighting could never fire.
+   * Takes precedence over `class` during scoring.
+   */
+  category?: PropertyCategory;
 }
 
 export interface PropertyEvent {

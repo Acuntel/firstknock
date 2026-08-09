@@ -1,0 +1,51 @@
+{
+  "id": "lawfirms",
+  "label": "Real Estate Law Firms",
+  "eventTypes": [
+    "LIS_PENDENS",
+    "JUDGMENT",
+    "NOTICE_OF_SALE",
+    "HOA_REGISTRATION"
+  ],
+  "weights": {
+    "eventSeverity": {
+      "LIS_PENDENS": 95,
+      "HOA_REGISTRATION": 85,
+      "JUDGMENT": 75,
+      "NOTICE_OF_SALE": 70,
+      "TAX_DELINQUENT": 45,
+      "SALE": 10,
+      "PERMIT": 10,
+      "FIRE_INCIDENT": 10
+    },
+    "freshnessHalfLifeHours": 168,
+    "freshnessHalfLifeByType": {
+      "HOA_REGISTRATION": 720,
+      "SALE": 2160,
+      "PERMIT": 336
+    },
+    "valueGap": 0,
+    "propertyClassFit": {
+      "residential": 1.0,
+      "multifamily": 1.2,
+      "commercial": 1.1,
+      "industrial": 0.9,
+      "vacant": 0.5,
+      "nonprofit": 1.0,
+      "unknown": 1.0
+    },
+    "distanceDecayMiles": 50,
+    "absenteeOwnerBonus": 0
+  },
+  "digest": {
+    "subject": "Your {county} intake for the week",
+    "leadNoun": "filing",
+    "topN": 15
+  },
+  "outreach": {
+    "emailTemplate": "lawfirms_v1",
+    "letterTemplate": "lawfirms_letter_v1",
+    "doorScript": "lawfirms_door_v1"
+  },
+  "hotPingDefault": 90
+}

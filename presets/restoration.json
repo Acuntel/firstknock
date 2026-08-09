@@ -1,0 +1,44 @@
+{
+  "id": "restoration",
+  "label": "Damage Restoration",
+  "eventTypes": ["FIRE_INCIDENT", "PERMIT", "LIS_PENDENS"],
+  "weights": {
+    "eventSeverity": {
+      "FIRE_INCIDENT": 100,
+      "PERMIT": 45,
+      "LIS_PENDENS": 20,
+      "SALE": 10,
+      "JUDGMENT": 10,
+      "NOTICE_OF_SALE": 10,
+      "TAX_DELINQUENT": 10,
+      "HOA_REGISTRATION": 5
+    },
+    "freshnessHalfLifeHours": 18,
+    "freshnessHalfLifeByType": {
+      "PERMIT": 336
+    },
+    "valueGap": 0.1,
+    "propertyClassFit": {
+      "residential": 1.0,
+      "multifamily": 1.1,
+      "commercial": 1.2,
+      "industrial": 1.1,
+      "vacant": 0.3,
+      "nonprofit": 0.9,
+      "unknown": 1.0
+    },
+    "distanceDecayMiles": 25,
+    "absenteeOwnerBonus": 0
+  },
+  "digest": {
+    "subject": "Your {county} losses this morning",
+    "leadNoun": "loss",
+    "topN": 5
+  },
+  "outreach": {
+    "emailTemplate": "restoration_v1",
+    "letterTemplate": "restoration_letter_v1",
+    "doorScript": "restoration_door_v1"
+  },
+  "hotPingDefault": 80
+}

@@ -6,6 +6,7 @@
   "scripts": {
     "once": "tsx src/run-once.ts",
     "seed-sources": "tsx src/seed-sources.ts",
+    "seed-tenants": "tsx src/seed-tenants.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

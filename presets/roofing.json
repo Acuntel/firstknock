@@ -1,0 +1,45 @@
+{
+  "id": "roofing",
+  "label": "Roofing and HVAC",
+  "eventTypes": ["PERMIT", "SALE"],
+  "weights": {
+    "eventSeverity": {
+      "PERMIT": 80,
+      "SALE": 55,
+      "FIRE_INCIDENT": 40,
+      "LIS_PENDENS": 10,
+      "JUDGMENT": 10,
+      "NOTICE_OF_SALE": 10,
+      "TAX_DELINQUENT": 10,
+      "HOA_REGISTRATION": 5
+    },
+    "freshnessHalfLifeHours": 168,
+    "freshnessHalfLifeByType": {
+      "PERMIT": 336,
+      "SALE": 2160
+    },
+    "valueGap": 0.05,
+    "propertyClassFit": {
+      "residential": 1.15,
+      "multifamily": 1.05,
+      "commercial": 1.0,
+      "industrial": 0.9,
+      "vacant": 0.1,
+      "nonprofit": 0.8,
+      "unknown": 1.0
+    },
+    "distanceDecayMiles": 30,
+    "absenteeOwnerBonus": 0
+  },
+  "digest": {
+    "subject": "Your {county} roofing leads this morning",
+    "leadNoun": "job",
+    "topN": 8
+  },
+  "outreach": {
+    "emailTemplate": "roofing_v1",
+    "letterTemplate": "roofing_letter_v1",
+    "doorScript": "roofing_door_v1"
+  },
+  "hotPingDefault": 75
+}

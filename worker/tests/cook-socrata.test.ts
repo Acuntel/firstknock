@@ -124,6 +124,27 @@ describe("cook permits adapter", () => {
     expect(event?.parties[0]?.role).toBe("applicant");
   });
 
+  it("reads the use type off job_code_primary, since permits carry no class", () => {
+    // Without this the commercial weighting in the roofing preset could never
+    // fire on a permit, because the feed has no assessor class field at all.
+    const commercial = permitRows.find(
+      (r) => r["job_code_primary"] === "COMMERCIAL PERMIT",
+    );
+    expect(commercial).toBeDefined();
+    expect(
+      cookPermitsAdapter.normalize(commercial as RawRecord)?.property.category,
+    ).toBe("commercial");
+  });
+
+  it("leaves the category undefined for job codes that state nothing useful", () => {
+    const base = permitRows[0] as RawRecord;
+    const vague = { ...base, job_code_primary: "OTHER" };
+    expect(cookPermitsAdapter.normalize(vague)?.property.category).toBeUndefined();
+
+    const { job_code_primary: _code, ...missing } = base;
+    expect(cookPermitsAdapter.normalize(missing)?.property.category).toBeUndefined();
+  });
+
   it("discards rows with no issue date, which the live feed does return", () => {
     const base = permitRows[0] as RawRecord;
     const { date_issued: _issued, ...noDate } = base;
