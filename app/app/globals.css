@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* High contrast text is a copy rule in README.md, so the palette is built
+   around readable body text rather than fashionable low contrast greys. */
+@theme {
+  --color-canvas: #fbfbfa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f2;
+  --color-ink: #16181d;
+  --color-muted: #5c626d;
+  --color-line: #e3e3e0;
+  --color-line-strong: #cfd0cc;
+  --color-brand: #1f5c9e;
+  --color-ok: #1c7048;
+  --color-ok-bg: #e8f3ec;
+  --color-warn: #8a5a12;
+  --color-warn-bg: #fbf1de;
+  --color-bad: #9c2f2f;
+  --color-bad-bg: #f8eaea;
+  --color-idle: #7d838d;
+  --color-idle-bg: #eeeff0;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-canvas: #121317;
+    --color-surface: #191b20;
+    --color-surface-2: #202329;
+    --color-ink: #e9e9e6;
+    --color-muted: #a2a8b3;
+    --color-line: #2a2d34;
+    --color-line-strong: #3a3e47;
+    --color-brand: #6ea8e0;
+    --color-ok: #67c295;
+    --color-ok-bg: #172a20;
+    --color-warn: #d8ab5f;
+    --color-warn-bg: #2c2417;
+    --color-bad: #e08585;
+    --color-bad-bg: #2c1c1c;
+    --color-idle: #8f959f;
+    --color-idle-bg: #22252a;
+  }
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

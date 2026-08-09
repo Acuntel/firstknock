@@ -249,12 +249,18 @@ export function scoreEvent(
   };
 }
 
-/** Ranks events for one tenant, dropping anything excluded outright. */
-export function rankForTenant(
-  events: ScorableEvent[],
+/**
+ * Ranks events for one tenant, dropping anything excluded outright.
+ *
+ * Generic over the event type so callers keep whatever they passed in. A caller
+ * handing over full PropertyEvent records gets them back intact rather than
+ * narrowed to the subset scoring happens to read.
+ */
+export function rankForTenant<T extends ScorableEvent>(
+  events: T[],
   tenant: ScoringTenant,
   now: Date,
-): Array<{ event: ScorableEvent; breakdown: ScoreBreakdown }> {
+): Array<{ event: T; breakdown: ScoreBreakdown }> {
   return events
     .map((event) => ({ event, breakdown: scoreEvent(event, tenant, now) }))
     .filter((row) => !row.breakdown.excluded)

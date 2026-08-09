@@ -102,3 +102,64 @@ missing is credentials rather than code.
 `ben/START_HERE.md` lists the accounts. Supabase is the only one Phase 1 needs, and
 the free tier covers it. Send a project URL, an anon key, and a service role key, or
 add this account to the project and it gets set up from here.
+
+## 6. Two of the five scoring inputs cannot be computed from Cook data
+
+`BUILD_SPEC.md` section 4 lists five scoring inputs. Three of them work today.
+Two have nothing to read.
+
+**Value gap** compares assessed value against the last sale. The Cook sales feed
+carries a sale price but no assessment, and the permits feed carries neither. The
+weight is implemented and tested, it simply never fires.
+
+**Distance from the service area** needs coordinates. Neither Cook sales nor Cook
+permits carry latitude or longitude. Every lead currently sits at a neutral 1.0 for
+distance, which means the geo fence in every tenant config is decorative so far.
+
+Both terms report themselves as unavailable in the lead detail rather than
+contributing a silent neutral multiplier, so nothing is being faked. But it does
+mean a score today is really three inputs, not five, and the investor preset is the
+one that suffers: value gap is weighted highest there and it is exactly the term
+with no data.
+
+Two fixes, both already implied by the spec. The Cook "5-dataset owner/tax join"
+named in section 3 is what supplies assessed value, and it was scoped as part of the
+Cook pack. Coordinates need geocoding from the parcel number, which the assessor
+publishes in a separate parcel dataset.
+
+Worth deciding whether that join lands before Phase 5 county packs or after. My read
+is before: it upgrades every Cook lead for three of the five partners, where a new
+county pack only serves one.
+
+## 7. Freshness needed a per event type half life
+
+Flagging a design decision rather than asking a question, because it changed the
+shape of the preset config.
+
+Section 4 asks for one steep freshness decay, and the example half life is 18 hours.
+That is right for a fire and wrong for a sale, because Cook publishes a sale about 75
+days after it closes. A single steep half life scores every sale in the dataset at
+zero, so the investor and roofing presets would show no sales at all.
+
+Presets now carry an optional `freshnessHalfLifeByType` alongside the global value.
+Fire and permits keep short half lives; sales get 90 days. The underlying point is
+that a sale is not stale at 75 days, that is simply the freshest the county has, and
+decay should measure how long we have had a chance to act rather than how long ago
+the event happened.
+
+Same root cause as the polling window in question 2. Publication lag varies by feed
+and the spec assumed one number would cover it.
+
+## 8. The app's live data path has never returned a row
+
+Same root as question 5, listed separately because it is a different risk. The Next
+app reads leads from Supabase when it is configured and falls back to scoring saved
+Cook fixtures when it is not. Only the fixture path has ever run.
+
+The live query is written out rather than stubbed, and it fails visibly instead of
+falling back, because a page quietly showing fixture data while claiming to be live
+is the worst outcome available. It still needs a real project before anyone trusts it.
+
+The fixture mode is worth keeping regardless. It means the today view, lead detail,
+board, and settings can be reviewed and demoed with no infrastructure at all, and it
+runs the real scoring engine rather than canned numbers.

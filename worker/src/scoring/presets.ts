@@ -1,9 +1,15 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { join } from "node:path";
 import type { ScoreWeights, VerticalPreset } from "./types";
 
-const PRESET_DIR = fileURLToPath(new URL("../../../presets", import.meta.url));
+// Imported rather than read off disk. The worker runs under Node and the Next
+// app runs through a bundler, and a runtime readFileSync against a path derived
+// from import.meta.url resolves differently in the two. A static import is the
+// same file in both, and it fails at build time rather than at request time.
+import restoration from "../../../presets/restoration.json";
+import investors from "../../../presets/investors.json";
+import roofing from "../../../presets/roofing.json";
+import lawfirms from "../../../presets/lawfirms.json";
+
+const FILES: Record<string, unknown> = { restoration, investors, roofing, lawfirms };
 
 export const PRESET_IDS = ["restoration", "investors", "roofing", "lawfirms"] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
@@ -62,14 +68,10 @@ export function loadPreset(id: string): VerticalPreset {
   const cached = cache.get(id);
   if (cached) return cached;
 
-  let raw: string;
-  try {
-    raw = readFileSync(join(PRESET_DIR, `${id}.json`), "utf8");
-  } catch {
-    throw new Error(`No preset file for "${id}" in presets/`);
-  }
+  const file = FILES[id];
+  if (!file) throw new Error(`No preset file for "${id}" in presets/`);
 
-  const preset = validate(JSON.parse(raw) as VerticalPreset, id);
+  const preset = validate(file as VerticalPreset, id);
   cache.set(id, preset);
   return preset;
 }

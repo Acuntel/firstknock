@@ -3,6 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "comment": "Exports point at TypeScript source. The app compiles them through next.config transpilePackages, so there is no build step to keep in sync.",
+  "exports": {
+    "./types": "./src/types.ts",
+    "./scoring": "./src/scoring/score.ts",
+    "./scoring/types": "./src/scoring/types.ts",
+    "./scoring/presets": "./src/scoring/presets.ts",
+    "./tenants": "./src/tenants.ts",
+    "./adapters/cook-socrata": "./src/adapters/cook-socrata.ts",
+    "./fixtures/cook-sales.json": "./fixtures/cook-sales.json",
+    "./fixtures/cook-permits.json": "./fixtures/cook-permits.json"
+  },
   "scripts": {
     "once": "tsx src/run-once.ts",
     "seed-sources": "tsx src/seed-sources.ts",
