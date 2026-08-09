@@ -1,4 +1,4 @@
-# Wyatt: Start Here
+# Ben: Start Here
 
 Welcome. This folder is your onboarding as the builder. Brady owns product direction, client relationships, and outreach; you own getting V1 running. Everything you need is in this repo, and every doc in this folder is written so you can paste it straight into your own Claude Code agent.
 

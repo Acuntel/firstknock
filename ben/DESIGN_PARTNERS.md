@@ -2,7 +2,7 @@
 
 These are real people. Four are existing relationships Brady leads personally; one is a cold prospect who was drafted in the first outreach batch. V1 is scoped to make exactly these five successful. Their tenant configs below are the acceptance test for the whole product: when all five configs work end to end, V1 ships.
 
-Discretion: existing-client details stay in this private repo. Brady makes first contact in every case; Wyatt builds.
+Discretion: existing-client details stay in this private repo. Brady makes first contact in every case; Ben builds.
 
 ## 1. Paul — restoration franchise operator (Chicagoland)
 

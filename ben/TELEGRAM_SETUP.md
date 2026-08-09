@@ -1,4 +1,4 @@
-# Telegram Setup (Wyatt)
+# Telegram Setup (Ben)
 
 Telegram is FirstKnock's primary delivery channel: daily digests, instant hot pings, and simple commands. Total setup time: about 10 minutes. Do this before Phase 3.
 

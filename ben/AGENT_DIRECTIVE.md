@@ -1,4 +1,4 @@
-# Directions for Wyatt's Claude Agent
+# Directions for Ben's Claude Agent
 
 This file is a set of paste-ready prompts. Open Claude Code in the repo, paste the preamble once, then run the phase prompts in order. Do not skip phases and do not let the agent "improve" the architecture; the spec is the spec.
 
@@ -6,7 +6,7 @@ This file is a set of paste-ready prompts. Open Claude Code in the repo, paste t
 
 ```
 You are building FirstKnock V1. The spec of record is docs/BUILD_SPEC.md and the
-scope of record is wyatt/DESIGN_PARTNERS.md: five specific tenants, four vertical
+scope of record is ben/DESIGN_PARTNERS.md: five specific tenants, four vertical
 presets, seven county adapters. Read both before writing any code.
 
 Hard rules:
@@ -59,7 +59,7 @@ Build Phase 2: scoring engine + the four vertical presets + lead UI.
    needs foreclosure-stage awareness (days-to-sale windows: 30/60/90).
 3. Next.js app shell: today view (leads ranked), lead detail with score breakdown,
    kanban-lite (new/contacted/responded/won/lost), settings reading the tenant row.
-4. Seed script: create the five design-partner tenants from wyatt/DESIGN_PARTNERS.md
+4. Seed script: create the five design-partner tenants from ben/DESIGN_PARTNERS.md
    as fixtures with their counties, presets, and weight overrides.
 
 Acceptance: same event scores identically across runs; each of the 5 seeded tenants
@@ -70,7 +70,7 @@ sees a differently-scored lead list from the same Cook County fixture events.
 
 ```
 Build Phase 3: digest engine and hot pings. Telegram wiring instructions are in
-wyatt/TELEGRAM_SETUP.md; follow its connect flow exactly (deep-link /start with a
+ben/TELEGRAM_SETUP.md; follow its connect flow exactly (deep-link /start with a
 tenant code, chat_id stored on the tenant).
 
 1. grammY bot in the worker: /start <code> connects a chat to a tenant; /leads
@@ -137,6 +137,6 @@ the Stripe portal downgrades same day; tsc clean; all tests green; both deploys 
 
 ## When the agent finishes each phase
 
-Wyatt: skim the diff, run the acceptance checks yourself (do not trust "done"),
+Ben: skim the diff, run the acceptance checks yourself (do not trust "done"),
 commit, then send Brady a one-paragraph update: what shipped, what surprised you,
 what's next.

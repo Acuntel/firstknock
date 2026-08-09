@@ -29,11 +29,11 @@ Launch verticals (each is a config preset, not a fork):
 | `docs/BUILD_SPEC.md`       | The complete engineering spec: stack, data model, adapter contract, scoring, build phases with acceptance criteria                   | 2          |
 | `docs/CUSTOMIZATION.md`    | How the one codebase serves every client: presets, county packs, config vs code                                                      | 3          |
 | `MASTER_PROMPT.md`         | The whole build compressed into a single prompt for an AI coding agent. `BUILD_SPEC.md` is the human-readable expansion of this file | 4          |
-| `wyatt/START_HERE.md`      | Wyatt's onboarding: read order, working agreement, accounts needed                                                                   | Wyatt 1    |
-| `wyatt/DESIGN_PARTNERS.md` | The 5 real first customers V1 is scoped to, with their tenant configs                                                                | Wyatt 2    |
-| `wyatt/AGENT_DIRECTIVE.md` | Paste-ready phase prompts for Wyatt's Claude agent                                                                                   | Wyatt 3    |
-| `wyatt/TELEGRAM_SETUP.md`  | BotFather to production wiring, connect flow, gotchas                                                                                | Wyatt 4    |
-| `wyatt/EMAIL_BOT_SAUCE.md` | The outreach-bot recipe: architecture, filters, ops rhythm, agent prompt                                                             | Wyatt 5    |
+| `ben/START_HERE.md`      | Ben's onboarding: read order, working agreement, accounts needed                                                                   | Ben 1    |
+| `ben/DESIGN_PARTNERS.md` | The 5 real first customers V1 is scoped to, with their tenant configs                                                                | Ben 2    |
+| `ben/AGENT_DIRECTIVE.md` | Paste-ready phase prompts for Ben's Claude agent                                                                                   | Ben 3    |
+| `ben/TELEGRAM_SETUP.md`  | BotFather to production wiring, connect flow, gotchas                                                                                | Ben 4    |
+| `ben/EMAIL_BOT_SAUCE.md` | The outreach-bot recipe: architecture, filters, ops rhythm, agent prompt                                                             | Ben 5    |
 
 ## Current status (August 2026)
 

@@ -1,4 +1,4 @@
-# The Email Bot Sauce (Wyatt)
+# The Email Bot Sauce (Ben)
 
 How Brady's outreach bots actually work, distilled from ~9 production bots, so you can have your Claude agent build you one for FirstKnock partner recruiting. The whole edge is discipline, not tricks: verified emails only, named people only, human reviews every send.
 
@@ -62,13 +62,13 @@ Structure, ~130 words total: researched 2-sentence hook, then what FirstKnock do
 ## Paste-ready prompt for your Claude agent
 
 ```
-Build me a cold-outreach draft bot in Python following wyatt/EMAIL_BOT_SAUCE.md in
+Build me a cold-outreach draft bot in Python following ben/EMAIL_BOT_SAUCE.md in
 this repo exactly: the six-module architecture, the 3-layer verification, the
 named-targeting filter, locked-structure generation (Claude writes subject + 2
 sentence hook only; model claude-sonnet-5), IMAP draft-first into Gmail Drafts,
 SQLite dedupe/bounce tracking, CLI `go N [vertical]` with 50/run and 500/day caps.
 Verticals and search terms: restoration, investors, roofing, lawfirms as defined in
-wyatt/DESIGN_PARTNERS.md, cities shuffled from a 40-metro national list. The email
+ben/DESIGN_PARTNERS.md, cities shuffled from a 40-metro national list. The email
 body template is the partner-recruiting structure in the SAUCE doc with MY
 signature details, which I will fill into config.py. It must never send email, only
 create drafts. Include a `report` command showing drafts/replies/bounces. No em
