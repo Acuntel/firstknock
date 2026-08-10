@@ -1,3 +1,5 @@
+import { countOf } from "../plural";
+
 export type DigestCadence = "daily" | "weekly_monday";
 
 export interface ScheduleConfig {
@@ -192,12 +194,13 @@ export function digestDue(
     };
   }
 
+  const lateHours = Math.round(lateByHours);
   return {
     due: true,
     forDate: local.date,
     reason:
       lateByHours < 1
         ? `Due at ${target} in ${config.digestTimezone}.`
-        : `Due at ${target}, running ${Math.round(lateByHours)} hours late.`,
+        : `Due at ${target}, running ${countOf("hour", lateHours)} late.`,
   };
 }
