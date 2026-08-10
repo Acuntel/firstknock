@@ -7,6 +7,7 @@ loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
 
 function toRow(tenant: DesignPartnerTenant) {
   return {
+    fixture_key: tenant.key,
     name: tenant.name,
     plan: tenant.plan,
     vertical_preset_id: tenant.verticalPresetId,
@@ -20,33 +21,36 @@ function toRow(tenant: DesignPartnerTenant) {
     digest_minute: tenant.digestMinute,
     digest_cadence: tenant.digestCadence,
     digest_channels: tenant.digestChannels,
+    // Routes every seeded tenant to one inbox while testing, which is the only
+    // way to exercise the email path without holding real partner addresses in
+    // this repo.
+    digest_email: process.env.DIGEST_TEST_EMAIL ?? tenant.digestEmail,
     hot_ping_threshold: tenant.hotPingThreshold,
     compliance_footer: tenant.complianceFooter,
-    // Stable per tenant so re-seeding does not invalidate a Telegram connect
-    // link someone already followed. Phase 3 consumes this in /start <code>.
-    telegram_connect_code: `fk-${tenant.key}`,
   };
 }
 
 /**
  * Creates or refreshes the five design partner tenants.
  *
- * Safe to re-run. It matches on telegram_connect_code, which is derived from the
- * fixture key, so a second run updates the same rows rather than creating a
- * parallel set. Weights are overwritten on purpose: while V1 is being built the
- * fixtures in tenants.ts are the source of truth, not hand edits in the
- * database. That stops being true the moment a real partner tunes their own
- * weights, which is a Phase 6 onboarding concern.
+ * Safe to re-run. It matches on fixture_key, so a second run updates the same
+ * rows rather than creating a parallel set. Weights are overwritten on purpose:
+ * while V1 is being built the fixtures in tenants.ts are the source of truth,
+ * not hand edits in the database. That stops being true the moment a real
+ * partner tunes their own weights, which is a Phase 6 onboarding concern.
+ *
+ * Telegram connect codes are deliberately not seeded. They are short lived and
+ * single use, minted from the settings page when someone is actually about to
+ * connect a chat.
  */
 async function main(): Promise<void> {
   const client = createWorkerClient();
 
   for (const tenant of DESIGN_PARTNERS) {
-    const code = `fk-${tenant.key}`;
     const { data: existing, error: readError } = await client
       .from("tenants")
       .select("id")
-      .eq("telegram_connect_code", code)
+      .eq("fixture_key", tenant.key)
       .maybeSingle();
 
     if (readError) throw new Error(`Failed to read tenants: ${readError.message}`);

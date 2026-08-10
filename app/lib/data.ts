@@ -6,6 +6,10 @@ import salesFixture from "@firstknock/worker/fixtures/cook-sales.json";
 import permitsFixture from "@firstknock/worker/fixtures/cook-permits.json";
 import { rankForTenant } from "@firstknock/worker/scoring";
 import { toScoringTenant } from "@firstknock/worker/tenants";
+import { eventFromRow } from "@firstknock/worker/event-row";
+// The digest derives lead ids the same way, so a deep link from a morning
+// message resolves to the page it promises.
+import { fixtureLeadId } from "@firstknock/worker/lead-id";
 import type { DesignPartnerTenant } from "@firstknock/worker/tenants";
 import type { ScoreBreakdown } from "@firstknock/worker/scoring/types";
 import type { CountyAdapter, PropertyEvent, RawRecord } from "@firstknock/worker/types";
@@ -52,13 +56,6 @@ function fixtureEvents(): PropertyEvent[] {
   ];
 }
 
-/** URL safe, stable id. County record ids contain spaces and punctuation. */
-function leadId(event: PropertyEvent): string {
-  return `${event.type}-${event.externalId}`
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
 
 /**
  * Spreads fixture leads across the kanban columns.
@@ -117,7 +114,7 @@ export async function getLeads(tenant: DesignPartnerTenant): Promise<LeadQueryRe
     const ranked = rankForTenant(fixtureEvents(), scoring, new Date());
 
     const scored = ranked.map(({ event, breakdown }) => {
-      const id = leadId(event);
+      const id = fixtureLeadId(event);
       return { id, score: breakdown.score, status: demoStatus(id), breakdown, event };
     });
 
@@ -153,31 +150,13 @@ async function liveLeads(tenant: DesignPartnerTenant): Promise<LeadQueryResult> 
 
     if (error) throw new Error(error.message);
 
-    const leads = (data ?? []).map((row) => {
-      const event = row.events as unknown as Record<string, unknown>;
-      return {
-        id: String(row.id),
-        score: Number(row.score),
-        status: row.status as LeadStatus,
-        breakdown: row.score_breakdown as unknown as ScoreBreakdown,
-        event: {
-          fips: String(event.fips ?? ""),
-          type: event.type,
-          occurredAt: new Date(String(event.occurred_at)),
-          externalId: String(event.dedupe_hash ?? ""),
-          property: {
-            address: (event.property_address as string) ?? undefined,
-            city: (event.property_city as string) ?? undefined,
-            state: (event.property_state as string) ?? undefined,
-            zip: (event.property_zip as string) ?? undefined,
-            parcelPin: (event.parcel_pin as string) ?? undefined,
-            class: (event.property_class as string) ?? undefined,
-          },
-          parties: (event.parties as never) ?? [],
-          raw: (event.raw as never) ?? {},
-        } as PropertyEvent,
-      };
-    });
+    const leads = (data ?? []).map((row) => ({
+      id: String(row.id),
+      score: Number(row.score),
+      status: row.status as LeadStatus,
+      breakdown: row.score_breakdown as unknown as ScoreBreakdown,
+      event: eventFromRow(row.events as unknown as Record<string, unknown>),
+    }));
 
     return { fixtureMode: false, error: null, ...withoutZeroScores(leads) };
   } catch (error) {

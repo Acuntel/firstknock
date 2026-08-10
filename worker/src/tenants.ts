@@ -24,6 +24,13 @@ export interface DesignPartnerTenant {
   digestMinute: number;
   digestCadence: "daily" | "weekly_monday";
   digestChannels: string[];
+  /**
+   * Left null in the fixtures on purpose. These are real people and this repo
+   * should not carry their addresses. Brady supplies them, or set
+   * DIGEST_TEST_EMAIL to route every seeded tenant to your own inbox while
+   * testing.
+   */
+  digestEmail: string | null;
   hotPingThreshold: number;
   complianceFooter: string | null;
   weights: ScoreWeights;
@@ -50,6 +57,7 @@ export const DESIGN_PARTNERS: DesignPartnerTenant[] = [
     digestMinute: 30,
     digestCadence: "daily",
     digestChannels: ["telegram", "email"],
+    digestEmail: null,
     hotPingThreshold: 80,
     complianceFooter: null,
     // "Commercial fit boosted, freshness half-life short (losses get claimed fast)."
@@ -73,6 +81,7 @@ export const DESIGN_PARTNERS: DesignPartnerTenant[] = [
     digestMinute: 0,
     digestCadence: "daily",
     digestChannels: ["telegram"],
+    digestEmail: null,
     hotPingThreshold: 85,
     complianceFooter: null,
     // "Absentee-owner weighting up, value-gap weight up, commercial zeroed."
@@ -97,6 +106,7 @@ export const DESIGN_PARTNERS: DesignPartnerTenant[] = [
     digestMinute: 0,
     digestCadence: "weekly_monday",
     digestChannels: ["telegram", "email"],
+    digestEmail: null,
     hotPingThreshold: 85,
     complianceFooter: null,
     // "Stage-aware scoring: 30/60/90 day windows to auction matter more than raw
@@ -128,6 +138,7 @@ export const DESIGN_PARTNERS: DesignPartnerTenant[] = [
     digestMinute: 0,
     digestCadence: "weekly_monday",
     digestChannels: ["email"],
+    digestEmail: null,
     hotPingThreshold: 90,
     // "Bar-advertising disclaimer in the tenant compliance footer."
     complianceFooter:
@@ -147,6 +158,7 @@ export const DESIGN_PARTNERS: DesignPartnerTenant[] = [
     digestMinute: 0,
     digestCadence: "daily",
     digestChannels: ["email"],
+    digestEmail: null,
     hotPingThreshold: 75,
     complianceFooter: null,
     // "Permit-weighted scoring plus recent-sale signal, hot-ping on commercial permits."

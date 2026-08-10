@@ -64,6 +64,9 @@ export function toEventRow(sourceId: string, event: PropertyEvent) {
     lat: event.property.lat ?? null,
     lng: event.property.lng ?? null,
     property_class: event.property.class ?? null,
+    // Dropped here originally, which silently disabled every category based
+    // weight for anything read back out of the database.
+    property_category: event.property.category ?? null,
     parties: event.parties,
     raw: event.raw,
     dedupe_hash: dedupeHash(event),

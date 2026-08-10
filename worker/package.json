@@ -12,18 +12,30 @@
     "./tenants": "./src/tenants.ts",
     "./adapters/cook-socrata": "./src/adapters/cook-socrata.ts",
     "./fixtures/cook-sales.json": "./fixtures/cook-sales.json",
-    "./fixtures/cook-permits.json": "./fixtures/cook-permits.json"
+    "./fixtures/cook-permits.json": "./fixtures/cook-permits.json",
+    "./format": "./src/format.ts",
+    "./counties": "./src/counties.ts",
+    "./lead-id": "./src/lead-id.ts",
+    "./plural": "./src/plural.ts",
+    "./digest/schedule": "./src/digest/schedule.ts",
+    "./digest/compose": "./src/digest/compose.ts",
+    "./event-row": "./src/event-row.ts",
+    "./registry": "./src/registry.ts"
   },
   "scripts": {
     "once": "tsx src/run-once.ts",
     "seed-sources": "tsx src/seed-sources.ts",
     "seed-tenants": "tsx src/seed-tenants.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "delivery": "tsx src/run-delivery.ts",
+    "bot": "tsx src/run-bot.ts",
+    "digest:preview": "tsx src/preview-digest.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "grammy": "^1.45.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",

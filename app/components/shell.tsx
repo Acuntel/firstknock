@@ -5,6 +5,7 @@ import { allTenants, href } from "@/lib/tenant";
 const NAV = [
   { path: "/today", label: "Today" },
   { path: "/board", label: "Board" },
+  { path: "/sources", label: "Sources" },
   { path: "/settings", label: "Settings" },
 ];
 

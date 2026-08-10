@@ -11,7 +11,10 @@
     "worker:seed-sources": "pnpm --filter @firstknock/worker run seed-sources",
     "worker:seed-tenants": "pnpm --filter @firstknock/worker run seed-tenants",
     "test": "pnpm -r run test",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm -r run typecheck",
+    "worker:delivery": "pnpm --filter @firstknock/worker run delivery",
+    "worker:bot": "pnpm --filter @firstknock/worker run bot",
+    "digest:preview": "pnpm --filter @firstknock/worker run digest:preview"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

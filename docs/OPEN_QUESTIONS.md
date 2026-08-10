@@ -163,3 +163,68 @@ is the worst outcome available. It still needs a real project before anyone trus
 The fixture mode is worth keeping regardless. It means the today view, lead detail,
 board, and settings can be reviewed and demoed with no infrastructure at all, and it
 runs the real scoring engine rather than canned numbers.
+
+## 9. A Phase 2 bug that only production would have found
+
+Worth writing down because of how it would have failed rather than what it was.
+
+The Phase 2 adapters derive a use category for Cook permits from
+`job_code_primary`, because permits carry no assessor class and the commercial
+weighting behind Mike's hot ping has nothing else to read. The events table had no
+column for it.
+
+Everything passed. The fixture tests score straight from an adapter, so the
+category was there. The app in fixture mode does the same. The value was only lost
+on the path nobody could exercise yet: write to the database, read back, score. In
+production Mike's commercial permit pings would simply never have fired, with green
+tests and no error anywhere.
+
+Fixed by `20260809235000_event_category.sql`, and the round trip is now asserted
+against a real Postgres in `delivery-schema.test.ts`.
+
+The general lesson is worth keeping for Phases 4 and 5: anything that exists only
+in memory today gets a schema check the moment a database is involved, because the
+gap between "the adapter produced it" and "the row stored it" is invisible until
+something reads the row back.
+
+## 10. Connect codes were a security hole, and fixing it changed the seed
+
+TELEGRAM_SETUP.md asks for "a short-lived random code tied to the tenant". The
+Phase 2 seed used a stable one derived from the tenant key, because it made
+re-seeding easy to write.
+
+That is a real weakness. Whoever holds a connect code can point their own chat at
+that tenant and start receiving its leads, and a permanent code sitting in a group
+chat's scrollback stays valid forever. Codes are now minted on demand from
+settings, expire after thirty minutes, and are cleared the moment a chat connects.
+
+Consequence: the tenant seed needed a different key to match on, so tenants gained
+a `fixture_key` column. Real tenants created through onboarding leave it null.
+
+Nothing to decide here unless you disagree with the thirty minute window.
+
+## 11. Phase 3 cannot be finished without two accounts
+
+The acceptance criteria are "a seeded tenant receives a real Telegram digest from
+fixture data" and "a fabricated 95-score event pings inside one cycle". Both need a
+bot token, and the email half needs a Resend key. Neither exists.
+
+Everything up to the send is built and tested: the schedule decision including the
+weekly Monday cadence and daylight saving, message composition including Telegram's
+length limit and HTML escaping, the command parsers, connect code expiry, and hot
+ping dedupe. 184 tests.
+
+What stands in for the missing accounts is `pnpm digest:preview`, which renders
+every design partner's real digest from the Cook fixtures through the real scoring
+engine and the real composer, and prints it. It reaches no network and no database.
+Pass it a timestamp to check a specific moment:
+
+    pnpm digest:preview 2026-08-10T13:05:00Z
+
+That is Monday at 8:05 Central, which is the one time REAL Law Group is due.
+
+Two things needed to close this out. A bot token from BotFather, ten minutes of
+work following ben/TELEGRAM_SETUP.md, plus a second dev bot so local testing never
+pings a real client. And the digest email addresses for the five partners, which
+are deliberately not in this repo: set `DIGEST_TEST_EMAIL` to route them all to one
+inbox in the meantime.
