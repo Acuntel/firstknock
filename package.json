@@ -14,7 +14,9 @@
     "typecheck": "pnpm -r run typecheck",
     "worker:delivery": "pnpm --filter @firstknock/worker run delivery",
     "worker:bot": "pnpm --filter @firstknock/worker run bot",
-    "digest:preview": "pnpm --filter @firstknock/worker run digest:preview"
+    "digest:preview": "pnpm --filter @firstknock/worker run digest:preview",
+    "telegram:check": "pnpm --filter @firstknock/worker run telegram:check",
+    "digest:send-test": "pnpm --filter @firstknock/worker run digest:send-test"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

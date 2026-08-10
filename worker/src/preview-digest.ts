@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
 import { config as loadEnv } from "dotenv";
-import { cookPermitsAdapter, cookSalesAdapter } from "./adapters/cook-socrata";
 import { composeDigest, composeHotPing } from "./digest/compose";
+import { fixtureEvents } from "./fixture-events";
 import { digestDue, nextDigestTime } from "./digest/schedule";
 import { fixtureLeadId } from "./lead-id";
 import { loadPreset } from "./scoring/presets";
@@ -30,22 +29,7 @@ if (Number.isNaN(at.getTime())) {
   process.exit(1);
 }
 
-function fixture(name: string): RawRecord[] {
-  return JSON.parse(
-    readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8"),
-  ) as RawRecord[];
-}
-
-function normalizeAll(adapter: CountyAdapter, rows: RawRecord[]): PropertyEvent[] {
-  return rows
-    .map((row) => adapter.normalize(row))
-    .filter((event): event is PropertyEvent => event !== null);
-}
-
-const events: PropertyEvent[] = [
-  ...normalizeAll(cookSalesAdapter, fixture("cook-sales.json")),
-  ...normalizeAll(cookPermitsAdapter, fixture("cook-permits.json")),
-];
+const events = fixtureEvents();
 
 /** Telegram HTML is for Telegram. The terminal wants the words. */
 function plain(html: string): string {

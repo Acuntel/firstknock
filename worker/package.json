@@ -30,7 +30,9 @@
     "typecheck": "tsc --noEmit",
     "delivery": "tsx src/run-delivery.ts",
     "bot": "tsx src/run-bot.ts",
-    "digest:preview": "tsx src/preview-digest.ts"
+    "digest:preview": "tsx src/preview-digest.ts",
+    "telegram:check": "tsx src/telegram-check.ts",
+    "digest:send-test": "tsx src/send-test-digest.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
