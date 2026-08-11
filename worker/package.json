@@ -33,7 +33,8 @@
     "digest:preview": "tsx src/preview-digest.ts",
     "telegram:check": "tsx src/telegram-check.ts",
     "digest:send-test": "tsx src/send-test-digest.ts",
-    "telegram:setup": "tsx src/telegram-setup.ts"
+    "telegram:setup": "tsx src/telegram-setup.ts",
+    "score": "tsx src/run-pipeline.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
