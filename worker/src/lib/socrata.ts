@@ -6,9 +6,20 @@ export interface SocrataQuery {
   domain: string;
   /** Socrata four by four, e.g. wvhk-k5uv */
   datasetId: string;
-  /** Column the incremental window filters and orders on. */
+  /**
+   * Column the incremental window filters and orders on. Ordering still needs
+   * it even when there is no date window, because offset paging without a sort
+   * can silently drop rows between pages.
+   */
   dateField: string;
-  since: Date;
+  /**
+   * Omit for datasets whose key column is not a timestamp. Cook's assessment
+   * roll keys on a numeric year, which no date comparison will match, so it
+   * narrows with `where` instead.
+   */
+  since?: Date;
+  /** Extra SoQL appended with AND, for narrowing server side. */
+  where?: string;
   pageSize?: number;
   /** Backstop so one very stale `since` cannot pull a whole dataset. */
   maxPages?: number;
@@ -41,10 +52,17 @@ export async function fetchSocrata(query: SocrataQuery): Promise<RawRecord[]> {
     const url = new URL(
       `https://${query.domain}/resource/${query.datasetId}.json`,
     );
-    url.searchParams.set(
-      "$where",
-      `${query.dateField} >= '${socrataTimestamp(query.since)}'`,
-    );
+    const clauses: string[] = [];
+    if (query.since) {
+      clauses.push(`${query.dateField} >= '${socrataTimestamp(query.since)}'`);
+    }
+    if (query.where) clauses.push(query.where);
+    if (clauses.length === 0) {
+      throw new Error(
+        `Socrata query for ${query.datasetId} has neither a date window nor a where clause, which would pull the whole dataset.`,
+      );
+    }
+    url.searchParams.set("$where", clauses.join(" AND "));
     url.searchParams.set("$order", `${query.dateField} ASC`);
     url.searchParams.set("$limit", String(pageSize));
     url.searchParams.set("$offset", String(page * pageSize));

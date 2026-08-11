@@ -287,3 +287,76 @@ framing is that each is roughly a week of county-by-county adapter work with no
 revenue behind it yet. If there is a specific prospect in one of those markets, that
 changes the calculation and is worth saying out loud, since that is exactly how the
 county pack moat is supposed to grow.
+
+## 14. Three of the seven V1 county packs have no public data source
+
+This is the Phase 5 finding, and it needs a decision rather than more code.
+
+I checked each remaining county against its live portals rather than assuming.
+What is actually published:
+
+| Pack | Reality | Status |
+| --- | --- | --- |
+| Wayne County, MI | Detroit's permit office publishes a real ArcGIS feed, issued same day | Built and tested |
+| Generic IMAP ingester | No external dependency by design | Built and tested |
+| DuPage County, IL | ArcGIS is live, but the parcel layer has 86 fields and not one date | No events to ingest |
+| Will County, IL | No treasurer or delinquency feed found on any platform | No source |
+| Winnebago and Boone, IL | Boundary and administrative layers only | No source |
+| Illinois Secretary of State | The bulk file endpoints do not respond publicly | No source |
+
+**The distinction that runs through all of it.** DuPage publishes a parcel layer:
+one row per parcel, assessment and owner data, no dated events. So do Saratoga and
+Onondaga in New York. A parcel layer is a property database, not a feed of things
+that happened, and an adapter built on one produces a county-wide list that never
+changes. This is why DuPage is listed above as having no events despite its GIS
+being in better shape than most.
+
+**What this means for the design partners.** Vince subscribes to Cook, DuPage, and
+Will. Only Cook produces events, so today he would receive Cook leads and nothing
+else. Z's Winnebago and Boone have no source at all. REAL Law's HOA registrations
+depend on the SOS file.
+
+**Three ways forward, and I think it is the third.**
+
+Buying data is the obvious answer and the wrong one this early: it is a recurring
+cost per county before there is revenue, and BUILD_SPEC section 12 lists paid data
+sources as a V1 non-goal.
+
+Scraping the county sites is possible and is what most competitors do. It is also
+brittle, legally greyer, and a maintenance burden that grows with every county.
+
+The IMAP ingester is already built and already the spec's own answer for Z:
+DESIGN_PARTNERS.md says to bridge him through it. That guidance turns out to apply
+much more widely than anyone expected. Most of these counties will send email
+alerts on a saved search, and a tenant forwarding those into a mailbox gets the
+same scored digest as any API-backed county. It costs nothing, it works today, and
+the adapter is written and tested.
+
+What I need from Brady is which of the three, and whether the design partners are
+willing to set up a forwarding rule. That last part is a sales question, not an
+engineering one, which is exactly why it is not mine to answer.
+
+## 15. Cook assessed values are a tenth of market value
+
+Flagging a domain assumption I had to make to turn on the value gap term.
+
+Cook assesses residential property at 10 percent of market value and commercial and
+industrial at 25 percent, by ordinance. The assessment roll publishes the assessed
+figure, so a parcel that sells for a million dollars carries an assessed value
+around a hundred thousand.
+
+The value gap term compares an assessment to a sale price. Feeding it the raw
+assessed figure makes every property in the county look wildly overpriced and fires
+the term backwards on every lead. The enricher therefore divides by the level of
+assessment to get an estimated market value before the comparison.
+
+Both rates are Cook ordinance and stable, so I am confident in the numbers. What I
+am less sure of is whether this generalises: every county sets its own level, and
+the enricher currently hardcodes Cook's. The moment a second county gets an
+enricher, the rate belongs in the county pack rather than in the code.
+
+Worth a sanity check from someone who knows the market: on the Cook sales fixture,
+turning this on moved one parcel from 20 to 55 for Vince, a property assessed at
+about 10.6 million in market terms that sold for 1.24 million. That is either a
+genuinely strong distress signal or an artefact of a multi parcel sale being priced
+as a whole, and telling those apart is domain knowledge I do not have.
