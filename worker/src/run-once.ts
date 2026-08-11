@@ -86,11 +86,19 @@ async function main(): Promise<void> {
     inserted: totalInserted,
   });
 
+  // How many events exist, not how many this run added. A run that inserts
+  // nothing because nothing is new is a healthy run, and reporting it as a
+  // county that never delivered was wrong.
+  const { count: eventsTotal } = await client
+    .from("events")
+    .select("*", { count: "exact", head: true });
+
   writeReceipt({
     at: new Date().toISOString(),
     sources: sources.length,
     failed,
     inserted: totalInserted,
+    eventsTotal: eventsTotal ?? 0,
     // Which packs actually ran, so the cockpit can tell "this county is live"
     // from "this county exists in the registry". A pack that is coded but not
     // seeded, or seeded but failing, is absent here.
