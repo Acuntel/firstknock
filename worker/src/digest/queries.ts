@@ -73,6 +73,24 @@ export async function loadTopLeads(
 }
 
 /**
+ * A hot ping means "this just happened". A permit issued three weeks ago is not
+ * hot no matter what it scores, and pinging about one interrupts someone's
+ * evening for nothing.
+ */
+const HOT_PING_MAX_AGE_HOURS = 48;
+
+/**
+ * How many pings one tenant may receive in a single cycle.
+ *
+ * Learned the hard way: the first run against a real database found 63 leads
+ * above threshold and sent 20 Telegram messages back to back. A burst like that
+ * is indistinguishable from a malfunction, and the recipient's instinct is to
+ * mute the bot, which costs every future ping too. Anything beyond the cap is
+ * not lost, it simply waits for the next cycle or arrives in the morning digest.
+ */
+const HOT_PING_BURST = 3;
+
+/**
  * Leads at or above the tenant's threshold that have never pinged.
  *
  * The hot_pinged_at null check is what stops a lead sitting above the threshold
@@ -82,18 +100,54 @@ export async function loadPendingHotPings(
   client: SupabaseClient,
   tenantId: string,
   threshold: number,
+  now: Date = new Date(),
 ): Promise<LeadWithEvent[]> {
+  const freshSince = new Date(now.getTime() - HOT_PING_MAX_AGE_HOURS * 3_600_000);
+
   const { data, error } = await client
     .from("leads")
-    .select("id, score, events(*)")
+    .select("id, score, events!inner(*)")
     .eq("tenant_id", tenantId)
     .gte("score", threshold)
     .is("hot_pinged_at", null)
+    .gte("events.occurred_at", freshSince.toISOString())
     .order("score", { ascending: false })
-    .limit(20);
+    .limit(HOT_PING_BURST);
 
   if (error) throw new Error(`Failed to load hot pings: ${error.message}`);
   return toLeads(data ?? []);
+}
+
+/**
+ * Marks older high scorers as pinged without sending anything.
+ *
+ * Without this, a lead that was above threshold but too old to ping stays
+ * pending forever and is re-evaluated on every cycle. It will still reach the
+ * operator through the digest, which is the right channel for something that
+ * happened last month.
+ */
+export async function retireStaleHotPings(
+  client: SupabaseClient,
+  tenantId: string,
+  threshold: number,
+  now: Date = new Date(),
+): Promise<number> {
+  const freshSince = new Date(now.getTime() - HOT_PING_MAX_AGE_HOURS * 3_600_000);
+
+  const { data, error } = await client
+    .from("leads")
+    .select("id, events!inner(occurred_at)")
+    .eq("tenant_id", tenantId)
+    .gte("score", threshold)
+    .is("hot_pinged_at", null)
+    .lt("events.occurred_at", freshSince.toISOString())
+    .limit(1000);
+
+  if (error) throw new Error(`Failed to find stale pings: ${error.message}`);
+
+  const ids = (data ?? []).map((row) => String(row.id));
+  if (ids.length > 0) await markHotPinged(client, ids);
+  return ids.length;
 }
 
 export async function markHotPinged(

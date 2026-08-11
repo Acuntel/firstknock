@@ -28,10 +28,44 @@ export interface GenerateResult {
   created: number;
   skippedZero: number;
   excluded: number;
+  /** Events of a type this vertical does not deal in. */
+  offVertical: number;
 }
 
 /** How far back to look for events that have not been scored for a tenant yet. */
 const LOOKBACK_DAYS = 120;
+
+/**
+ * PostgREST caps a response at its max-rows setting, 1000 by default, and it
+ * does so silently: `.limit(5000)` returns 1000 rows with no error and no
+ * indication anything was truncated.
+ *
+ * That is invisible in tests against a bare Postgres, because it is a PostgREST
+ * behaviour rather than a database one. Against the real project it meant the
+ * scorer considered the first thousand events and quietly ignored the rest.
+ * Every read that can exceed a thousand rows pages explicitly.
+ */
+const PAGE = 1000;
+
+async function fetchAllRows<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  label: string,
+  maxRows = 50_000,
+): Promise<T[]> {
+  const rows: T[] = [];
+
+  for (let from = 0; from < maxRows; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) throw new Error(`Failed to read ${label}: ${error.message}`);
+
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE) return rows;
+  }
+
+  log.warn("row cap reached while paging", { label, rows: rows.length, maxRows });
+  return rows;
+}
 
 async function loadTenants(client: SupabaseClient): Promise<LeadTenant[]> {
   const { data, error } = await client
@@ -76,25 +110,26 @@ async function unscoredEvents(
 ): Promise<PropertyEvent[]> {
   if (tenant.counties.length === 0) return [];
 
-  const { data: existing, error: leadError } = await client
-    .from("leads")
-    .select("event_id")
-    .eq("tenant_id", tenant.id);
+  const existing = await fetchAllRows<{ event_id: string }>(
+    (from, to) =>
+      client.from("leads").select("event_id").eq("tenant_id", tenant.id).range(from, to),
+    "existing leads",
+  );
+  const seen = new Set(existing.map((row) => String(row.event_id)));
 
-  if (leadError) throw new Error(`Failed to read leads: ${leadError.message}`);
-  const seen = new Set((existing ?? []).map((row) => String(row.event_id)));
+  const rows = await fetchAllRows<Record<string, unknown>>(
+    (from, to) =>
+      client
+        .from("events")
+        .select("*")
+        .in("fips", tenant.counties)
+        .gte("occurred_at", since.toISOString())
+        .order("occurred_at", { ascending: false })
+        .range(from, to),
+    "events",
+  );
 
-  const { data, error } = await client
-    .from("events")
-    .select("*")
-    .in("fips", tenant.counties)
-    .gte("occurred_at", since.toISOString())
-    .order("occurred_at", { ascending: false })
-    .limit(5000);
-
-  if (error) throw new Error(`Failed to read events: ${error.message}`);
-
-  return (data ?? [])
+  return rows
     .filter((row) => !seen.has(String(row.id)))
     .map((row) => ({ ...eventFromRow(row), externalId: String(row.id) }));
 }
@@ -118,7 +153,7 @@ export async function generateLeads(
   for (const tenant of tenants) {
     const events = await unscoredEvents(client, tenant, since);
     if (events.length === 0) {
-      results.push({ tenant: tenant.name, considered: 0, created: 0, skippedZero: 0, excluded: 0 });
+      results.push({ tenant: tenant.name, considered: 0, created: 0, skippedZero: 0, excluded: 0, offVertical: 0 });
       continue;
     }
 
@@ -127,11 +162,24 @@ export async function generateLeads(
     const enriched = applyEnrichment(events, await cookAssessedValues.enrich(events));
 
     const preset = loadPreset(tenant.verticalPresetId);
+    // A vertical declares the event types it is actually about. Anything else
+    // is not a weak lead, it is the wrong kind of record: a property sale is
+    // not law firm intake at any score. Without this the law firm preset
+    // produced 7,247 leads all scoring 7, which is a digest of noise and worse
+    // than an empty one, because an empty one tells the truth about coverage.
+    const relevant = new Set(preset.eventTypes);
+
     const rows: Array<Record<string, unknown>> = [];
     let skippedZero = 0;
     let excluded = 0;
+    let offVertical = 0;
 
     for (const event of enriched) {
+      if (!relevant.has(event.type)) {
+        offVertical += 1;
+        continue;
+      }
+
       const scorable = event as ScorableEvent & { externalId: string };
       // A sale carries its own price, which is the other half of the value gap.
       const salePrice = Number((event.raw as Record<string, unknown>)?.sale_price ?? 0);
@@ -172,6 +220,7 @@ export async function generateLeads(
       created: rows.length,
       skippedZero,
       excluded,
+      offVertical,
     });
 
     log.info("leads generated", {
@@ -181,6 +230,7 @@ export async function generateLeads(
       created: rows.length,
       skippedZero,
       excluded,
+      offVertical,
     });
   }
 

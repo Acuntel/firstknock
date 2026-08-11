@@ -3,7 +3,12 @@ import { loadPreset } from "../scoring/presets";
 import { log } from "../lib/log";
 import { composeHotPing } from "./compose";
 import { deliver, type DeliveryResult } from "./deliver";
-import { loadPendingHotPings, loadTenants, markHotPinged } from "./queries";
+import {
+  loadPendingHotPings,
+  loadTenants,
+  markHotPinged,
+  retireStaleHotPings,
+} from "./queries";
 import { appUrl } from "./send";
 
 export interface HotPingOutcome {
@@ -56,7 +61,15 @@ export async function runHotPings(
       continue;
     }
 
-    const pending = await loadPendingHotPings(client, tenant.id, threshold);
+    // Anything above threshold but too old to be "hot" is retired quietly. It
+    // still reaches the operator in the digest, which is the right channel for
+    // something that happened last month.
+    const retired = await retireStaleHotPings(client, tenant.id, threshold, now);
+    if (retired > 0) {
+      log.info("stale hot pings retired to the digest", { tenant: tenant.name, retired });
+    }
+
+    const pending = await loadPendingHotPings(client, tenant.id, threshold, now);
     if (pending.length === 0) {
       outcomes.push({
         tenant: tenant.name,
