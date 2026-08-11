@@ -68,6 +68,23 @@ export function parseConnectCode(argument: string | undefined): string | null {
   return /^[A-Za-z0-9_-]{6,64}$/.test(raw) ? raw : null;
 }
 
+/**
+ * The command menu Telegram shows next to the message box.
+ *
+ * Without this a client has to already know the commands exist. Paul opening the
+ * bot for the first time should see what it can do, not a blank chat. Registered
+ * on bot startup so the menu cannot drift from the handlers.
+ *
+ * /start and /connect are deliberately absent. Both take a code nobody types by
+ * hand, and listing them invites people to try.
+ */
+export const BOT_COMMANDS = [
+  { command: "leads", description: "Today's top five" },
+  { command: "pause", description: "Pause digests, as in /pause 7d" },
+  { command: "resume", description: "Start digests again" },
+  { command: "help", description: "What this bot can do" },
+];
+
 export const HELP_TEXT = [
   "FirstKnock commands:",
   "",

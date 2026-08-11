@@ -203,28 +203,28 @@ a `fixture_key` column. Real tenants created through onboarding leave it null.
 
 Nothing to decide here unless you disagree with the thirty minute window.
 
-## 11. Phase 3 cannot be finished without two accounts
+## 11. Phase 3 Telegram is done. Email still needs a key
 
-The acceptance criteria are "a seeded tenant receives a real Telegram digest from
-fixture data" and "a fabricated 95-score event pings inside one cycle". Both need a
-bot token, and the email half needs a Resend key. Neither exists.
+Both acceptance criteria are met. `@firstknock_leads_bot` exists, and on
+2026-08-10 it delivered a real digest built from the Cook County fixtures plus a
+fabricated hot lead that scored 100 against Pilot Roofing's 75 threshold. The
+command menu is registered, so a client opening the bot sees what it can do
+rather than a blank chat.
 
-Everything up to the send is built and tested: the schedule decision including the
-weekly Monday cadence and daylight saving, message composition including Telegram's
-length limit and HTML escaping, the command parsers, connect code expiry, and hot
-ping dedupe. 184 tests.
+Two things still outstanding, neither blocking the Telegram half.
 
-What stands in for the missing accounts is `pnpm digest:preview`, which renders
-every design partner's real digest from the Cook fixtures through the real scoring
-engine and the real composer, and prints it. It reaches no network and no database.
-Pass it a timestamp to check a specific moment:
+**A dev bot.** Right now there is one token, and it is the one that will message
+real clients. Two long pollers on a single token throw 409s that do not resolve
+on their own, so the first time Railway is deployed and someone runs the worker
+locally, they will collide. `firstknock_dev_bot` is two minutes of BotFather and
+it keeps local testing away from Paul and Vince permanently.
 
-    pnpm digest:preview 2026-08-10T13:05:00Z
+**Resend.** The email half of delivery has never run. REAL Law Group is email
+only, so they receive nothing until this exists. Free tier covers it. The five
+partners' digest addresses are also still needed and deliberately not in this
+repo: `DIGEST_TEST_EMAIL` routes them all to one inbox in the meantime.
 
-That is Monday at 8:05 Central, which is the one time REAL Law Group is due.
-
-Two things needed to close this out. A bot token from BotFather, ten minutes of
-work following ben/TELEGRAM_SETUP.md, plus a second dev bot so local testing never
-pings a real client. And the digest email addresses for the five partners, which
-are deliberately not in this repo: set `DIGEST_TEST_EMAIL` to route them all to one
-inbox in the meantime.
+The bot process itself and the scheduled digest both read tenants from the
+database, so `pnpm worker:bot` and `pnpm worker:delivery` are still behind
+Supabase. A token proves the transport. It does not yet make a digest arrive at
+6:30 in the morning.

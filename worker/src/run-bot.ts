@@ -1,6 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { createWorkerClient } from "./db";
 import { createBot } from "./telegram/bot";
+import { BOT_COMMANDS } from "./telegram/commands";
 import { log } from "./lib/log";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
@@ -28,6 +29,9 @@ async function main(): Promise<void> {
   };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
+
+  // Keeps the menu Telegram shows in step with the handlers that exist.
+  await bot.api.setMyCommands(BOT_COMMANDS);
 
   log.info("bot starting in long polling mode");
   await bot.start({

@@ -109,9 +109,9 @@ async function main(): Promise<void> {
     out(`Now open Telegram and send @${me.username} any message. Just "hi" is fine.`);
     out("Bots are not allowed to message you first, so it has to hear from you once.");
     out("");
-    out("Waiting up to two minutes.");
+    out("Waiting up to five minutes. Finding a bot for the first time takes a moment.");
 
-    for (let attempt = 0; attempt < 40 && !chat; attempt += 1) {
+    for (let attempt = 0; attempt < 100 && !chat; attempt += 1) {
       await wait(3000);
       chat = await findChat(api);
     }
