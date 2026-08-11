@@ -16,7 +16,8 @@
     "worker:bot": "pnpm --filter @firstknock/worker run bot",
     "digest:preview": "pnpm --filter @firstknock/worker run digest:preview",
     "telegram:check": "pnpm --filter @firstknock/worker run telegram:check",
-    "digest:send-test": "pnpm --filter @firstknock/worker run digest:send-test"
+    "digest:send-test": "pnpm --filter @firstknock/worker run digest:send-test",
+    "telegram:setup": "pnpm --filter @firstknock/worker run telegram:setup"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

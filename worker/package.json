@@ -32,7 +32,8 @@
     "bot": "tsx src/run-bot.ts",
     "digest:preview": "tsx src/preview-digest.ts",
     "telegram:check": "tsx src/telegram-check.ts",
-    "digest:send-test": "tsx src/send-test-digest.ts"
+    "digest:send-test": "tsx src/send-test-digest.ts",
+    "telegram:setup": "tsx src/telegram-setup.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
