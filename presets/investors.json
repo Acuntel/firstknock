@@ -6,7 +6,8 @@
     "JUDGMENT",
     "NOTICE_OF_SALE",
     "TAX_DELINQUENT",
-    "SALE"
+    "SALE",
+    "CODE_VIOLATION"
   ],
   "weights": {
     "eventSeverity": {
@@ -17,13 +18,15 @@
       "SALE": 35,
       "PERMIT": 20,
       "FIRE_INCIDENT": 30,
-      "HOA_REGISTRATION": 15
+      "HOA_REGISTRATION": 15,
+      "CODE_VIOLATION": 65
     },
     "freshnessHalfLifeHours": 72,
     "freshnessHalfLifeByType": {
       "SALE": 2160,
       "TAX_DELINQUENT": 720,
-      "PERMIT": 336
+      "PERMIT": 336,
+      "CODE_VIOLATION": 1080
     },
     "valueGap": 0.25,
     "propertyClassFit": {
@@ -40,9 +43,18 @@
     "foreclosureStage": {
       "enabled": true,
       "windows": [
-        { "maxDaysToSale": 30, "multiplier": 1.35 },
-        { "maxDaysToSale": 60, "multiplier": 1.2 },
-        { "maxDaysToSale": 90, "multiplier": 1.1 }
+        {
+          "maxDaysToSale": 30,
+          "multiplier": 1.35
+        },
+        {
+          "maxDaysToSale": 60,
+          "multiplier": 1.2
+        },
+        {
+          "maxDaysToSale": 90,
+          "multiplier": 1.1
+        }
       ],
       "pastSaleMultiplier": 0.4
     }

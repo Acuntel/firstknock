@@ -16,13 +16,15 @@
       "TAX_DELINQUENT": 45,
       "SALE": 10,
       "PERMIT": 10,
-      "FIRE_INCIDENT": 10
+      "FIRE_INCIDENT": 10,
+      "CODE_VIOLATION": 25
     },
     "freshnessHalfLifeHours": 168,
     "freshnessHalfLifeByType": {
       "HOA_REGISTRATION": 720,
       "SALE": 2160,
-      "PERMIT": 336
+      "PERMIT": 336,
+      "CODE_VIOLATION": 1080
     },
     "valueGap": 0,
     "propertyClassFit": {

@@ -1,7 +1,12 @@
 {
   "id": "restoration",
   "label": "Damage Restoration",
-  "eventTypes": ["FIRE_INCIDENT", "PERMIT", "LIS_PENDENS"],
+  "eventTypes": [
+    "FIRE_INCIDENT",
+    "PERMIT",
+    "LIS_PENDENS",
+    "CODE_VIOLATION"
+  ],
   "weights": {
     "eventSeverity": {
       "FIRE_INCIDENT": 100,
@@ -11,11 +16,13 @@
       "JUDGMENT": 10,
       "NOTICE_OF_SALE": 10,
       "TAX_DELINQUENT": 10,
-      "HOA_REGISTRATION": 5
+      "HOA_REGISTRATION": 5,
+      "CODE_VIOLATION": 70
     },
     "freshnessHalfLifeHours": 18,
     "freshnessHalfLifeByType": {
-      "PERMIT": 336
+      "PERMIT": 336,
+      "CODE_VIOLATION": 1080
     },
     "valueGap": 0.1,
     "propertyClassFit": {

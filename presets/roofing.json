@@ -1,7 +1,11 @@
 {
   "id": "roofing",
   "label": "Roofing and HVAC",
-  "eventTypes": ["PERMIT", "SALE"],
+  "eventTypes": [
+    "PERMIT",
+    "SALE",
+    "CODE_VIOLATION"
+  ],
   "weights": {
     "eventSeverity": {
       "PERMIT": 80,
@@ -11,12 +15,14 @@
       "JUDGMENT": 10,
       "NOTICE_OF_SALE": 10,
       "TAX_DELINQUENT": 10,
-      "HOA_REGISTRATION": 5
+      "HOA_REGISTRATION": 5,
+      "CODE_VIOLATION": 50
     },
     "freshnessHalfLifeHours": 168,
     "freshnessHalfLifeByType": {
       "PERMIT": 336,
-      "SALE": 2160
+      "SALE": 2160,
+      "CODE_VIOLATION": 1080
     },
     "valueGap": 0.05,
     "propertyClassFit": {

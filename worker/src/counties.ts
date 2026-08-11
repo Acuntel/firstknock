@@ -16,6 +16,8 @@ const COUNTIES: Record<string, County> = {
   "17007": { name: "Boone", state: "IL" },
   "17000": { name: "Illinois, statewide", state: "IL" },
   "26163": { name: "Wayne", state: "MI" },
+  "36067": { name: "Onondaga", state: "NY" },
+  "55079": { name: "Milwaukee", state: "WI" },
 };
 
 export function countyName(fips: string): string {

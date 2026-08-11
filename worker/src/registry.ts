@@ -1,11 +1,18 @@
 import type { CountyAdapter } from "./types";
 import { cookAdapters } from "./adapters/cook-socrata";
 import { wayneDetroitPermitsAdapter } from "./adapters/wayne-detroit";
+import { onondagaSyracuseViolationsAdapter } from "./adapters/onondaga-syracuse";
+import { milwaukeeAdapters } from "./adapters/milwaukee";
 
 // Every county pack registers here. BUILD_SPEC section 3 keys the registry by
 // FIPS because that is what a tenant actually subscribes to: a county, not an
 // adapter. One county can have several adapters, one per dataset.
-const ALL: readonly CountyAdapter[] = [...cookAdapters, wayneDetroitPermitsAdapter];
+const ALL: readonly CountyAdapter[] = [
+  ...cookAdapters,
+  wayneDetroitPermitsAdapter,
+  onondagaSyracuseViolationsAdapter,
+  ...milwaukeeAdapters,
+];
 
 const byId = new Map<string, CountyAdapter>();
 const byFips = new Map<string, CountyAdapter[]>();

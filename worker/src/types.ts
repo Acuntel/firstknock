@@ -7,6 +7,7 @@ export type EventType =
   | "NOTICE_OF_SALE"
   | "TAX_DELINQUENT"
   | "PERMIT"
+  | "CODE_VIOLATION"
   | "SALE"
   | "HOA_REGISTRATION"
   | "FIRE_INCIDENT";
