@@ -6,7 +6,7 @@ import { fixtureLeadId } from "./lead-id";
 import { loadPreset } from "./scoring/presets";
 import { rankForTenant, scoreEvent } from "./scoring/score";
 import { sendTelegram, sendTelegramSequence } from "./telegram/client";
-import { DESIGN_PARTNERS, designPartner, toScoringTenant } from "./tenants";
+import { ALL_TENANTS, designPartner, toScoringTenant } from "./tenants";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
 
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   if (!chatId) {
     out("Usage: pnpm digest:send-test --chat <chat_id> [--tenant <key>] [--ping]");
     out("");
-    out(`Tenants: ${DESIGN_PARTNERS.map((t) => t.key).join(", ")}`);
+    out(`Tenants: ${ALL_TENANTS.map((t) => t.key).join(", ")}`);
     out("Find your chat id with: pnpm telegram:check");
     process.exitCode = 1;
     return;

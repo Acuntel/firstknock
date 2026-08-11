@@ -2,7 +2,7 @@ import { config as loadEnv } from "dotenv";
 import { Api } from "grammy";
 import { createWorkerClient } from "./db";
 import { CONNECT_CODE_TTL_MINUTES, issueConnectCode } from "./telegram/connect";
-import { DESIGN_PARTNERS } from "./tenants";
+import { ALL_TENANTS } from "./tenants";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
 
@@ -25,7 +25,7 @@ function usage(message: string): never {
     `${message}\n\n` +
       `Usage: pnpm --filter worker connect <tenant-key|all> [--force]\n` +
       `  --force disconnects an existing chat first, which is how you undo a test connect.\n` +
-      `Tenants: ${DESIGN_PARTNERS.map((t) => t.key).join(", ")}\n`,
+      `Tenants: ${ALL_TENANTS.map((t) => t.key).join(", ")}\n`,
   );
   process.exit(1);
 }
@@ -41,10 +41,10 @@ async function main(): Promise<void> {
 
   const wanted =
     keysArg === "all"
-      ? DESIGN_PARTNERS.map((t) => t.key)
+      ? ALL_TENANTS.map((t) => t.key)
       : keysArg.split(",").map((k) => k.trim()).filter(Boolean);
 
-  const unknown = wanted.filter((k) => !DESIGN_PARTNERS.some((t) => t.key === k));
+  const unknown = wanted.filter((k) => !ALL_TENANTS.some((t) => t.key === k));
   if (unknown.length > 0) usage(`Unknown tenant: ${unknown.join(", ")}`);
 
   // The link needs the bot's own username, and asking Telegram is more reliable

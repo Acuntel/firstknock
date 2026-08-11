@@ -1,6 +1,6 @@
 import { config as loadEnv } from "dotenv";
 import { createWorkerClient } from "./db";
-import { DESIGN_PARTNERS } from "./tenants";
+import { ALL_TENANTS } from "./tenants";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
 
@@ -22,7 +22,7 @@ function usage(message: string): never {
   process.stderr.write(
     `${message}\n\n` +
       `Usage: pnpm --filter worker invite <email> <tenant-keys|all>\n` +
-      `Tenants: ${DESIGN_PARTNERS.map((t) => t.key).join(", ")}\n`,
+      `Tenants: ${ALL_TENANTS.map((t) => t.key).join(", ")}\n`,
   );
   process.exit(1);
 }
@@ -34,11 +34,11 @@ async function main(): Promise<void> {
 
   const wanted =
     keysArg === "all"
-      ? DESIGN_PARTNERS.map((t) => t.key)
+      ? ALL_TENANTS.map((t) => t.key)
       : keysArg.split(",").map((k) => k.trim()).filter(Boolean);
 
   const unknown = wanted.filter(
-    (k) => !DESIGN_PARTNERS.some((t) => t.key === k),
+    (k) => !ALL_TENANTS.some((t) => t.key === k),
   );
   if (unknown.length > 0) usage(`Unknown tenant: ${unknown.join(", ")}`);
 

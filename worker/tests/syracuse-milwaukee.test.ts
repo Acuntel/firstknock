@@ -13,6 +13,7 @@ import {
   taxOwed,
 } from "../src/adapters/milwaukee";
 import { ckanDate } from "../src/lib/ckan";
+import { lookbackDaysFor } from "../src/leads/generate";
 import type { CountyAdapter, PropertyEvent, RawRecord } from "../src/types";
 
 function load(name: string): RawRecord[] {
@@ -176,5 +177,30 @@ describe("Milwaukee delinquent tax", () => {
     expect(mkeTax.normalize({ ...base, "Levy Year": 1200 })).toBeNull();
     expect(mkeTax.normalize({ ...base, "Levy Year": 3000 })).toBeNull();
     expect(mkeTax.normalize({ ...base, "Levy Year": 2025 })).not.toBeNull();
+  });
+});
+
+describe("per tenant lookback window", () => {
+  const tenant = (byType: Record<string, number>) =>
+    ({
+      weights: { freshnessHalfLifeHours: 72, freshnessHalfLifeByType: byType },
+    }) as never;
+
+  it("widens the window to cover a long half life", () => {
+    // Milwaukee's delinquent tax is dated from when the levy came due, so a
+    // 2025 levy carries a February 2026 date. Under the old flat 120 day
+    // window the entire 18,000 row file fell outside it by summer and produced
+    // zero leads.
+    expect(lookbackDaysFor(tenant({ TAX_DELINQUENT: 8760 }), ["TAX_DELINQUENT"])).toBe(1095);
+  });
+
+  it("keeps the tight default when nothing needs longer", () => {
+    expect(lookbackDaysFor(tenant({ PERMIT: 336 }), ["PERMIT"])).toBe(120);
+  });
+
+  it("ignores half lives for types the vertical does not subscribe to", () => {
+    // A roofer whose preset never mentions tax should not start reading three
+    // years of history because some other vertical weights it that way.
+    expect(lookbackDaysFor(tenant({ TAX_DELINQUENT: 8760, PERMIT: 336 }), ["PERMIT"])).toBe(120);
   });
 });

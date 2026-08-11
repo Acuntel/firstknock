@@ -5,7 +5,7 @@ import { digestDue, nextDigestTime } from "./digest/schedule";
 import { fixtureLeadId } from "./lead-id";
 import { loadPreset } from "./scoring/presets";
 import { rankForTenant } from "./scoring/score";
-import { DESIGN_PARTNERS, toScoringTenant } from "./tenants";
+import { ALL_TENANTS, toScoringTenant } from "./tenants";
 import type { CountyAdapter, PropertyEvent, RawRecord } from "./types";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
@@ -47,7 +47,7 @@ const out = (line = "") => process.stdout.write(`${line}\n`);
 out(`FirstKnock digest preview at ${at.toISOString()}`);
 out(`${events.length} Cook County fixture events, scored live. Nothing is sent.`);
 
-for (const partner of DESIGN_PARTNERS) {
+for (const partner of ALL_TENANTS) {
   const preset = loadPreset(partner.verticalPresetId);
   const decision = digestDue(
     {

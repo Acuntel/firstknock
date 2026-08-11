@@ -1,6 +1,6 @@
 import { config as loadEnv } from "dotenv";
 import { createWorkerClient } from "./db";
-import { DESIGN_PARTNERS, type DesignPartnerTenant } from "./tenants";
+import { ALL_TENANTS, type DesignPartnerTenant } from "./tenants";
 import { log } from "./lib/log";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
@@ -46,7 +46,7 @@ function toRow(tenant: DesignPartnerTenant) {
 async function main(): Promise<void> {
   const client = createWorkerClient();
 
-  for (const tenant of DESIGN_PARTNERS) {
+  for (const tenant of ALL_TENANTS) {
     const { data: existing, error: readError } = await client
       .from("tenants")
       .select("id")
@@ -74,7 +74,7 @@ async function main(): Promise<void> {
     });
   }
 
-  log.info("tenant seed complete", { tenants: DESIGN_PARTNERS.length });
+  log.info("tenant seed complete", { tenants: ALL_TENANTS.length });
 }
 
 main().catch((error: unknown) => {

@@ -5,7 +5,7 @@ import { log } from "../lib/log";
 import { loadPreset } from "../scoring/presets";
 import { scoreEvent } from "../scoring/score";
 import type { ScorableEvent, ScoringTenant } from "../scoring/types";
-import type { PropertyEvent } from "../types";
+import type { EventType, PropertyEvent } from "../types";
 
 /**
  * Turns stored events into per tenant scored leads.
@@ -34,6 +34,34 @@ export interface GenerateResult {
 
 /** How far back to look for events that have not been scored for a tenant yet. */
 const LOOKBACK_DAYS = 120;
+
+/**
+ * How far back to read events for one tenant.
+ *
+ * A flat window assumes every event is news that goes stale on the same
+ * schedule, and that is wrong for standing conditions. Milwaukee's delinquent
+ * tax file is dated from when each levy came due, so a 2025 levy carries a
+ * February 2026 date and the whole file falls outside a 120 day window by
+ * summer. The best dataset in the project produced exactly zero leads because
+ * of it.
+ *
+ * So the window follows the tenant's own weighting instead. Three half lives
+ * leaves about an eighth of the freshness multiplier, which is the point where
+ * an event stops being worth surfacing, and a tenant that only cares about
+ * permits keeps the tight window it had before.
+ */
+export function lookbackDaysFor(tenant: ScoringTenant, eventTypes: Iterable<EventType>): number {
+  const weights = tenant.weights;
+  let longestHours = weights.freshnessHalfLifeHours;
+
+  const byType = weights.freshnessHalfLifeByType ?? {};
+  for (const type of eventTypes) {
+    const hours = byType[type];
+    if (hours !== undefined && hours > longestHours) longestHours = hours;
+  }
+
+  return Math.max(LOOKBACK_DAYS, Math.ceil((longestHours * 3) / 24));
+}
 
 /**
  * PostgREST caps a response at its max-rows setting, 1000 by default, and it
@@ -107,8 +135,9 @@ async function unscoredEvents(
   client: SupabaseClient,
   tenant: LeadTenant,
   since: Date,
+  eventTypes: readonly EventType[],
 ): Promise<PropertyEvent[]> {
-  if (tenant.counties.length === 0) return [];
+  if (tenant.counties.length === 0 || eventTypes.length === 0) return [];
 
   const existing = await fetchAllRows<{ event_id: string }>(
     (from, to) =>
@@ -123,6 +152,12 @@ async function unscoredEvents(
         .from("events")
         .select("*")
         .in("fips", tenant.counties)
+        // The vertical's own event types, filtered in the query rather than in
+        // memory. Off-vertical events never produce a lead row, so without this
+        // they look unscored forever and every run refetches and re-enriches
+        // them: Paul was reprocessing 6,670 Cook sales he does not want on
+        // every single pass, which is what made this job take minutes.
+        .in("type", eventTypes as unknown as string[])
         .gte("occurred_at", since.toISOString())
         .order("occurred_at", { ascending: false })
         .range(from, to),
@@ -147,11 +182,18 @@ export async function generateLeads(
   now: Date,
 ): Promise<GenerateResult[]> {
   const tenants = await loadTenants(client);
-  const since = new Date(now.getTime() - LOOKBACK_DAYS * 86_400_000);
   const results: GenerateResult[] = [];
 
   for (const tenant of tenants) {
-    const events = await unscoredEvents(client, tenant, since);
+    // Per tenant, not per run: the window is only as wide as this tenant's own
+    // weights justify, so one tenant caring about year old tax debt does not
+    // make every other tenant re-read months of permits.
+    const preset = loadPreset(tenant.verticalPresetId);
+    const since = new Date(
+      now.getTime() - lookbackDaysFor(tenant, preset.eventTypes) * 86_400_000,
+    );
+
+    const events = await unscoredEvents(client, tenant, since, preset.eventTypes);
     if (events.length === 0) {
       results.push({ tenant: tenant.name, considered: 0, created: 0, skippedZero: 0, excluded: 0, offVertical: 0 });
       continue;
@@ -159,9 +201,23 @@ export async function generateLeads(
 
     // Enrichment before scoring, not after: the value gap and class fit terms
     // read signals that only the assessment roll carries.
-    const enriched = applyEnrichment(events, await cookAssessedValues.enrich(events));
+    //
+    // A failure here must not stop the pass. Enrichment is an improvement to a
+    // score, not a precondition for having one, and the assessment roll is a
+    // third party API that rate limits. One throttled response was aborting
+    // lead generation for every tenant, including the ones in counties the
+    // enricher does not even cover.
+    let enriched: ReturnType<typeof applyEnrichment> = events;
+    try {
+      enriched = applyEnrichment(events, await cookAssessedValues.enrich(events));
+    } catch (error) {
+      log.warn("enrichment failed, scoring without it", {
+        tenant: tenant.name,
+        events: events.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
-    const preset = loadPreset(tenant.verticalPresetId);
     // A vertical declares the event types it is actually about. Anything else
     // is not a weak lead, it is the wrong kind of record: a property sale is
     // not law firm intake at any score. Without this the law firm preset
