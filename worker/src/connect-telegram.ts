@@ -23,14 +23,17 @@ loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
 function usage(message: string): never {
   process.stderr.write(
     `${message}\n\n` +
-      `Usage: pnpm --filter worker connect <tenant-key|all>\n` +
+      `Usage: pnpm --filter worker connect <tenant-key|all> [--force]\n` +
+      `  --force disconnects an existing chat first, which is how you undo a test connect.\n` +
       `Tenants: ${DESIGN_PARTNERS.map((t) => t.key).join(", ")}\n`,
   );
   process.exit(1);
 }
 
 async function main(): Promise<void> {
-  const [keysArg] = process.argv.slice(2);
+  const argv = process.argv.slice(2);
+  const force = argv.includes("--force");
+  const [keysArg] = argv.filter((a) => a !== "--force");
   if (!keysArg) usage("Say which tenant to connect.");
 
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -64,12 +67,24 @@ async function main(): Promise<void> {
       continue;
     }
 
-    if (tenant.telegram_chat_id) {
+    if (tenant.telegram_chat_id && !force) {
       process.stdout.write(
         `${tenant.name}: already connected to chat ${tenant.telegram_chat_id}.\n` +
-          `  Sending a new link would move their digest to whoever opens it.\n\n`,
+          `  Sending a new link would move their digest to whoever opens it.\n` +
+          `  Pass --force to hand it to someone else, which is how you undo a test connect.\n\n`,
       );
       continue;
+    }
+
+    if (tenant.telegram_chat_id) {
+      // Clearing first means a --force that then fails leaves nobody connected
+      // rather than leaving the old chat still receiving someone else's leads.
+      const { error: clearError } = await client
+        .from("tenants")
+        .update({ telegram_chat_id: null })
+        .eq("id", tenant.id);
+      if (clearError) throw new Error(`Could not disconnect ${tenant.name}: ${clearError.message}`);
+      process.stdout.write(`${tenant.name}: disconnected chat ${tenant.telegram_chat_id}\n`);
     }
 
     const code = await issueConnectCode(client, String(tenant.id), now);
