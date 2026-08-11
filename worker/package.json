@@ -20,7 +20,9 @@
     "./digest/schedule": "./src/digest/schedule.ts",
     "./digest/compose": "./src/digest/compose.ts",
     "./event-row": "./src/event-row.ts",
-    "./registry": "./src/registry.ts"
+    "./registry": "./src/registry.ts",
+    "./billing/plans": "./src/billing/plans.ts",
+    "./telegram/connect": "./src/telegram/connect.ts"
   },
   "scripts": {
     "once": "tsx src/run-once.ts",
@@ -34,7 +36,8 @@
     "telegram:check": "tsx src/telegram-check.ts",
     "digest:send-test": "tsx src/send-test-digest.ts",
     "telegram:setup": "tsx src/telegram-setup.ts",
-    "score": "tsx src/run-pipeline.ts"
+    "score": "tsx src/run-pipeline.ts",
+    "cron": "tsx src/run-cron.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
