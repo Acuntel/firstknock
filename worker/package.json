@@ -37,7 +37,8 @@
     "digest:send-test": "tsx src/send-test-digest.ts",
     "telegram:setup": "tsx src/telegram-setup.ts",
     "score": "tsx src/run-pipeline.ts",
-    "cron": "tsx src/run-cron.ts"
+    "cron": "tsx src/run-cron.ts",
+    "invite": "tsx src/invite.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",

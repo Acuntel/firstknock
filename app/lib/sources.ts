@@ -1,6 +1,7 @@
 import { allAdapters } from "@firstknock/worker/registry";
 import { countyName } from "@firstknock/worker/counties";
 import { isFixtureMode } from "./data";
+import { sessionClient } from "./session";
 
 export interface SourceHealth {
   adapterId: string;
@@ -44,17 +45,14 @@ export async function getSources(): Promise<SourcesResult> {
     lastError: null,
   }));
 
-  if (isFixtureMode()) {
+  if (await isFixtureMode()) {
     return { sources: registered, fixtureMode: true, error: null };
   }
 
   try {
-    const { createClient } = await import("@supabase/supabase-js");
-    const client = createClient(
-      process.env.SUPABASE_URL as string,
-      process.env.SUPABASE_ANON_KEY as string,
-      { auth: { persistSession: false } },
-    );
+    // Sources are global facts with no tenant column, so any signed in user may
+    // read them. The session client still carries the auth RLS needs.
+    const client = await sessionClient();
 
     const { data, error } = await client
       .from("sources")

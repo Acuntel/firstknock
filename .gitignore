@@ -4,3 +4,6 @@ node_modules/
 .next/
 .DS_Store
 *.log
+
+# Incremental typecheck cache, machine local
+*.tsbuildinfo

@@ -60,7 +60,7 @@ export default async function SettingsPage({
   }
 
   return (
-    <Shell tenant={tenant} current="/settings" fixtureMode={isFixtureMode()}>
+    <Shell tenant={tenant} current="/settings" fixtureMode={await isFixtureMode()}>
       <h1 className="mb-6 text-xl font-semibold">Settings</h1>
 
       <section className="mb-6">

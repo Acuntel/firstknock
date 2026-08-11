@@ -7,6 +7,7 @@ import permitsFixture from "@firstknock/worker/fixtures/cook-permits.json";
 import { rankForTenant } from "@firstknock/worker/scoring";
 import { toScoringTenant } from "@firstknock/worker/tenants";
 import { eventFromRow } from "@firstknock/worker/event-row";
+import { currentUser, sessionClient } from "./session";
 // The digest derives lead ids the same way, so a deep link from a morning
 // message resolves to the page it promises.
 import { fixtureLeadId } from "@firstknock/worker/lead-id";
@@ -14,14 +15,10 @@ import type { DesignPartnerTenant } from "@firstknock/worker/tenants";
 import type { ScoreBreakdown } from "@firstknock/worker/scoring/types";
 import type { CountyAdapter, PropertyEvent, RawRecord } from "@firstknock/worker/types";
 
-export const LEAD_STATUSES = [
-  "new",
-  "contacted",
-  "responded",
-  "won",
-  "lost",
-] as const;
-export type LeadStatus = (typeof LEAD_STATUSES)[number];
+import { LEAD_STATUSES, type LeadStatus } from "./lead-status";
+
+export { LEAD_STATUSES };
+export type { LeadStatus };
 
 export interface LeadView {
   id: string;
@@ -32,15 +29,20 @@ export interface LeadView {
 }
 
 /**
- * True when there is no Supabase project to read from.
+ * True when this request cannot read real leads.
  *
- * In that state the app serves leads computed from the saved Cook County
- * fixtures through the real scoring engine, so the views are reviewable before
- * any infrastructure exists. Every page says so plainly rather than letting
- * fixture rows pass for a live pipeline.
+ * Two ways that happens: there is no Supabase project configured, or nobody is
+ * signed in. The second matters as much as the first, because RLS scopes leads
+ * to a user's tenant membership, so an anonymous request correctly returns
+ * nothing rather than someone else's pipeline.
+ *
+ * In either case the app serves leads computed from the saved Cook County
+ * fixtures through the real scoring engine, and says so on every page rather
+ * than letting fixture rows pass for a live pipeline.
  */
-export function isFixtureMode(): boolean {
-  return !process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY;
+export async function isFixtureMode(): Promise<boolean> {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) return true;
+  return (await currentUser()) === null;
 }
 
 function normalizeAll(adapter: CountyAdapter, rows: unknown[]): PropertyEvent[] {
@@ -109,7 +111,7 @@ function withoutZeroScores(leads: LeadView[]): {
 }
 
 export async function getLeads(tenant: DesignPartnerTenant): Promise<LeadQueryResult> {
-  if (isFixtureMode()) {
+  if (await isFixtureMode()) {
     const scoring = toScoringTenant(tenant);
     const ranked = rankForTenant(fixtureEvents(), scoring, new Date());
 
@@ -127,24 +129,39 @@ export async function getLeads(tenant: DesignPartnerTenant): Promise<LeadQueryRe
 /**
  * The Supabase path.
  *
- * Unverified: there is no project to point it at yet, so this has never
- * returned a row. It is written out rather than stubbed so the shape is
- * reviewable, and it fails visibly instead of silently falling back to fixtures,
- * because a page quietly showing fixture data while claiming to be live is the
- * worst outcome available here.
+ * Scoped entirely by RLS. It fails visibly rather than silently falling back to
+ * fixtures, because a page quietly showing fixture data while claiming to be live
+ * is the worst outcome available here.
  */
 async function liveLeads(tenant: DesignPartnerTenant): Promise<LeadQueryResult> {
   try {
-    const { createClient } = await import("@supabase/supabase-js");
-    const client = createClient(
-      process.env.SUPABASE_URL as string,
-      process.env.SUPABASE_ANON_KEY as string,
-      { auth: { persistSession: false } },
-    );
+    // The session client, not the service role one. RLS is what scopes these
+    // rows to the signed in user's tenant, so a bug here cannot serve one
+    // tenant another tenant's pipeline.
+    const client = await sessionClient();
+
+    // The switcher selects by fixture key. Resolving it through RLS means a user
+    // who picks a tenant they do not belong to simply gets no rows, rather than
+    // the app having to police it.
+    const { data: match } = await client
+      .from("tenants")
+      .select("id")
+      .eq("fixture_key", tenant.key)
+      .maybeSingle();
+
+    if (!match) {
+      return {
+        leads: [],
+        suppressed: 0,
+        fixtureMode: false,
+        error: `You do not have access to ${tenant.name}, or it has not been created yet.`,
+      };
+    }
 
     const { data, error } = await client
       .from("leads")
       .select("id, score, status, score_breakdown, events(*)")
+      .eq("tenant_id", match.id)
       .order("score", { ascending: false })
       .limit(100);
 

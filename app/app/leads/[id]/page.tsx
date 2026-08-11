@@ -39,7 +39,7 @@ export default async function LeadPage({
   const entries = Object.entries(lead.breakdown.components);
 
   return (
-    <Shell tenant={tenant} current="/today" fixtureMode={isFixtureMode()}>
+    <Shell tenant={tenant} current="/today" fixtureMode={await isFixtureMode()}>
       <Link href={href("/today", tenant.key)} className="text-sm text-brand">
         Back to today
       </Link>

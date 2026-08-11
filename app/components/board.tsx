@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LEAD_STATUSES, type LeadStatus } from "@/lib/data";
+import { LEAD_STATUSES, type LeadStatus } from "@/lib/lead-status";
 
 export interface BoardCard {
   id: string;
