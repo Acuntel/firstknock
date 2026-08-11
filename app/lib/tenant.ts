@@ -1,10 +1,13 @@
-import { DESIGN_PARTNERS, designPartner } from "@firstknock/worker/tenants";
+import { ALL_TENANTS, designPartner } from "@firstknock/worker/tenants";
 import type { DesignPartnerTenant } from "@firstknock/worker/tenants";
 
 export const DEFAULT_TENANT_KEY = "vince";
 
 export function allTenants(): DesignPartnerTenant[] {
-  return DESIGN_PARTNERS;
+  // Every tenant, not just Brady's five design partners. The switcher listing
+  // fewer than exist is how a whole market becomes unreachable in the UI while
+  // its leads sit in the database.
+  return ALL_TENANTS;
 }
 
 export function resolveTenant(key: string | undefined): DesignPartnerTenant {
