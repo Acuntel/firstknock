@@ -38,7 +38,8 @@
     "telegram:setup": "tsx src/telegram-setup.ts",
     "score": "tsx src/run-pipeline.ts",
     "cron": "tsx src/run-cron.ts",
-    "invite": "tsx src/invite.ts"
+    "invite": "tsx src/invite.ts",
+    "connect": "tsx src/connect-telegram.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
