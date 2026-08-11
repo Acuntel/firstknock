@@ -228,3 +228,62 @@ The bot process itself and the scheduled digest both read tenants from the
 database, so `pnpm worker:bot` and `pnpm worker:delivery` are still behind
 Supabase. A token proves the transport. It does not yet make a digest arrive at
 6:30 in the morning.
+
+## 12. The AI spend caps are a placeholder, not a decision
+
+BUILD_SPEC section 8 requires a hard monthly AI cap per tier and does not say what
+it is. The ledger enforces one now, set at roughly five percent of each tier's
+price: $7.50 on Solo, $15 on Pro, $25 on Team.
+
+That is a guess, chosen so AI cannot eat the margin while still covering a normal
+month. What it should actually be depends on how many drafts a tenant writes, which
+nobody knows yet. Worth revisiting after the first month of real usage rather than
+now.
+
+The mechanism is the part worth confirming. Spend is reserved before the call and
+settled after, so a crash between the two leaves the reservation counting against
+the cap rather than vanishing. That is deliberate: the alternative lets a crash
+loop spend without limit. It also means a tenant can appear slightly over-spent
+until a stuck reservation is cleaned up.
+
+## 13. Michigan, Wisconsin, and upstate New York
+
+Ben asked for lead coverage in Michigan, Wisconsin, and upstate New York around
+Saratoga, Skaneateles, and Syracuse. Raising it here rather than building it,
+because two of the three are outside what this repo is scoped to.
+
+**Where the scope line sits.** BUILD_SPEC section 12 lists "more than one state" as
+a V1 non-goal, and START_HERE.md says anything not serving the five design partners
+is out of scope regardless of merit. Michigan is the exception the spec makes for
+itself: Mike Ostrowski is in Metro Detroit, so Wayne County MI is already V1 adapter
+number six. Wisconsin and upstate New York serve no design partner.
+
+**What the data actually looks like**, checked against the live portals rather than
+assumed:
+
+| Area | What exists | Verdict |
+| --- | --- | --- |
+| Wayne County, MI | Detroit building permits and demolition permits as real datasets, plus county parcels | Buildable, and already in scope for Mike |
+| Milwaukee and Wisconsin | No permit or foreclosure feed found on either Socrata or ArcGIS | Needs per county research before anyone can estimate it |
+| Saratoga and Onondaga, NY | Parcel layers only | Not usable as is, see below |
+
+**The distinction that matters.** What is published for the New York counties is
+parcel data: a static property database, one row per parcel, with no dated events.
+FirstKnock's whole model is a public record event becoming a scored lead, and a
+parcel layer has no events in it. It tells you every property that exists, not that
+something just happened to one. Building an adapter against it would produce a
+county-wide property list that never changes, which is not a lead feed.
+
+Getting real events for upstate New York means judicial foreclosure artifacts filed
+at the county clerk, which is the same problem as Z's Winnebago and Boone pack, the
+one DESIGN_PARTNERS.md calls the hardest and says to build last. That is not a
+reason it cannot be done. It is a reason it is a multi-day job per county rather
+than an afternoon.
+
+**What I would suggest.** Michigan needs no decision, it is already on the Phase 5
+list and Detroit's permit feed looks straightforward. Wisconsin and New York are a
+scope conversation with Brady rather than something to slip in, and the honest
+framing is that each is roughly a week of county-by-county adapter work with no
+revenue behind it yet. If there is a specific prospect in one of those markets, that
+changes the calculation and is worth saying out loud, since that is exactly how the
+county pack moat is supposed to grow.

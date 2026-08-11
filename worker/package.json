@@ -36,6 +36,7 @@
     "telegram:setup": "tsx src/telegram-setup.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
     "@supabase/supabase-js": "^2.47.10",
     "dotenv": "^16.4.7",
     "grammy": "^1.45.1"
