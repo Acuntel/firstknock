@@ -1,3 +1,4 @@
+import { mkdirSync, writeFileSync } from "node:fs";
 import { config as loadEnv } from "dotenv";
 import {
   createWorkerClient,
@@ -85,8 +86,36 @@ async function main(): Promise<void> {
     inserted: totalInserted,
   });
 
+  writeReceipt({
+    at: new Date().toISOString(),
+    sources: sources.length,
+    failed,
+    inserted: totalInserted,
+  });
+
   // A failed county should not read as a green run in Railway's logs.
   if (failed > 0) process.exitCode = 1;
+}
+
+/**
+ * Leaves proof on disk that a real run against a real database happened.
+ *
+ * The cockpit has no database credentials and no dependencies by design, so
+ * "events land from a live worker run" is otherwise something a human has to
+ * assert. A receipt the runner writes is a derived fact instead of a claim,
+ * and a failed run writes one too, so a red run cannot read as green.
+ */
+function writeReceipt(receipt: Record<string, unknown>): void {
+  try {
+    const dir = new URL("../../.cockpit/", import.meta.url);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(new URL("last-run.json", dir), `${JSON.stringify(receipt, null, 2)}\n`);
+  } catch (error) {
+    // A receipt is reporting, not the job. Never fail a good run over it.
+    log.warn("could not write run receipt", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 main().catch((error: unknown) => {
