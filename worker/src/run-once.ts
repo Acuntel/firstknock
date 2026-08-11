@@ -91,6 +91,10 @@ async function main(): Promise<void> {
     sources: sources.length,
     failed,
     inserted: totalInserted,
+    // Which packs actually ran, so the cockpit can tell "this county is live"
+    // from "this county exists in the registry". A pack that is coded but not
+    // seeded, or seeded but failing, is absent here.
+    ran: sources.map((source) => source.adapter_id).sort(),
   });
 
   // A failed county should not read as a green run in Railway's logs.
