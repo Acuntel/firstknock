@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mail-draft";
 import { statsSentence, type MarketStats } from "../src/prospect/market-stats";
-import { assemblePitch, type Prospect } from "../src/prospect/pitch";
+import { assemblePitch, wrap, type Prospect } from "../src/prospect/pitch";
 
 const SENDER = {
   name: "Ben Shpritz",
@@ -173,5 +173,30 @@ describe("finding the drafts folder", () => {
 
   it("says so rather than appending a draft somewhere wrong", async () => {
     await expect(findDraftsFolder(listing([{ path: "INBOX" }]))).rejects.toThrow(/No drafts folder/);
+  });
+});
+
+describe("plain text wrapping", () => {
+  it("wraps every paragraph, generated ones included", () => {
+    const body = assemblePitch(
+      PROSPECT,
+      MILWAUKEE,
+      { subject: "s", hook: "A ".repeat(80).trim() },
+      SENDER,
+    );
+    // The first version wrapped only the fixed template, so a long generated
+    // sentence sat unbroken beside neatly wrapped ones.
+    for (const line of body.split("\n")) {
+      expect(line.length, line).toBeLessThanOrEqual(72);
+    }
+  });
+
+  it("never splits a word", () => {
+    const word = "x".repeat(90);
+    expect(wrap(`start ${word} end`).split("\n")).toContain(word);
+  });
+
+  it("keeps deliberate line breaks, like the signature", () => {
+    expect(wrap("Ben Shpritz\nben@example.com")).toBe("Ben Shpritz\nben@example.com");
   });
 });

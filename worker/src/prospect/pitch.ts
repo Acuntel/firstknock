@@ -94,29 +94,54 @@ export function assemblePitch(
   opening: PitchOpening,
   sender: { name: string; email: string; postalAddress: string },
 ): string {
-  return [
+  const paragraphs = [
     prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
-    "",
     opening.hook,
-    "",
-    `I track ${stats.county} and pull the public records that say a property is`,
-    "in trouble or about to move. Right now:",
-    "",
+    `I track ${stats.county} and pull the public records that say a property is in` +
+      " trouble or about to move. Right now:",
     statsSentence(stats),
-    "",
-    "Each one is scored, deduplicated, and delivered every morning to your phone",
-    "or inbox. You would get the address, what happened, when, and the owner's",
-    "mailing details where the county publishes them.",
-    "",
-    "If that is useful I will send you a week of it at no cost so you can check",
-    "the addresses against what you already know. If it is not, no follow up.",
-    "",
-    `${sender.name}`,
-    `${sender.email}`,
-    "",
-    "If this is not relevant, reply no and I will not email you again.",
-    sender.postalAddress,
-  ].join("\n");
+    "Each one is scored, deduplicated, and delivered every morning to your phone or" +
+      " inbox. You would get the address, what happened, when, and the owner's" +
+      " mailing details where the county publishes them.",
+    "If that is useful I will send you a week of it at no cost so you can check the" +
+      " addresses against what you already know. If it is not, no follow up.",
+    `${sender.name}\n${sender.email}`,
+    `If this is not relevant, reply no and I will not email you again.\n${sender.postalAddress}`,
+  ];
+
+  return paragraphs.map((p) => wrap(p)).join("\n\n");
+}
+
+/**
+ * Wraps plain text to a fixed column.
+ *
+ * Every paragraph goes through this, including the ones the model wrote and the
+ * generated statistics line. The first version only hard wrapped the fixed
+ * template, so a long generated sentence sat as one unbroken line next to
+ * neatly wrapped ones and the email looked sloppy in exactly the way a cold
+ * email cannot afford to.
+ *
+ * 72 columns is the plain text email convention and it survives being quoted in
+ * a reply without re-wrapping into a mess.
+ */
+export function wrap(text: string, width = 72): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const out: string[] = [];
+      let current = "";
+      for (const word of line.split(/\s+/).filter(Boolean)) {
+        if (current === "") current = word;
+        else if (current.length + 1 + word.length <= width) current += ` ${word}`;
+        else {
+          out.push(current);
+          current = word;
+        }
+      }
+      if (current !== "") out.push(current);
+      return out.join("\n");
+    })
+    .join("\n");
 }
 
 /**
