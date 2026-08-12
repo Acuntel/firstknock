@@ -166,3 +166,44 @@ export function bestLeadFor(boards: MarketBoard[], prospectId: string): MatchedL
   }
   return null;
 }
+
+/**
+ * Gives every company its own example property.
+ *
+ * bestLeadFor hands the same top lead to every company that matches it, so
+ * three Buffalo landscapers were all pitched the same house. That is bad twice
+ * over: the emails come out near identical, which is the bulk pattern filters
+ * look for, and if those three ever compare notes they are being sold one job
+ * three times.
+ *
+ * Walks each company's matching leads and takes the best one not yet handed
+ * out, falling back to sharing only when a segment has more buyers than leads.
+ */
+export function assignLeads(
+  boards: MarketBoard[],
+  prospectIds: readonly string[],
+): Map<string, MatchedLead> {
+  const assigned = new Map<string, MatchedLead>();
+  const taken = new Set<string>();
+
+  const matchesFor = (prospectId: string): MatchedLead[] =>
+    boards.flatMap((board) =>
+      board.leads.filter((lead) => lead.buyers.some((b) => b.prospect.id === prospectId)),
+    );
+
+  // Companies with the fewest options choose first, so a company with one
+  // possible lead is not left out by one that had five to pick from.
+  const order = [...prospectIds].sort((a, b) => matchesFor(a).length - matchesFor(b).length);
+
+  for (const prospectId of order) {
+    const options = matchesFor(prospectId);
+    const fresh = options.find((lead) => !taken.has(lead.id));
+    const chosen = fresh ?? options[0];
+    if (!chosen) continue;
+
+    assigned.set(prospectId, chosen);
+    taken.add(chosen.id);
+  }
+
+  return assigned;
+}

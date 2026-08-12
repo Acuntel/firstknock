@@ -99,7 +99,7 @@ function prompt(prospect: Prospect, stats: SegmentStats, segment: BuyerSegment):
  * trade's own work is what a landscaper or a hauler actually reacts to, and it
  * is the sentence the whole segment taxonomy exists to produce.
  */
-function segmentLine(stats: SegmentStats | MarketStats): string {
+function segmentLine(stats: SegmentStats | MarketStats, seed: string): string {
   const segmented = stats as SegmentStats;
   if (!segmented.segmentLabel || segmented.segmentCount === undefined) {
     return `I track ${stats.county} and pull the public records that say a property` +
@@ -111,11 +111,16 @@ function segmentLine(stats: SegmentStats | MarketStats): string {
       " against a property. Right now:";
   }
 
-  return (
+  const count = segmented.segmentCount.toLocaleString();
+  return variant(seed, [
     `I track what ${stats.county} cites properties for. Of the records I hold,` +
-    ` ${segmented.segmentCount.toLocaleString()} are the kind of work you do, and every one` +
-    " is an owner the city has already told to fix it."
-  );
+      ` ${count} are the kind of work you do, and every one is an owner the city` +
+      " has already told to fix it.",
+    `Of everything ${stats.county} has cited that I hold, ${count} are your line of` +
+      " work, each one an owner already under an order to put it right.",
+    `${count} of the citations I hold for ${stats.county} are work you do, and behind` +
+      " every one is an owner the city has given a deadline.",
+  ]);
 }
 
 /**
@@ -132,16 +137,17 @@ export function assemblePitch(
   opening: PitchOpening,
   sender: { name: string; email: string; postalAddress: string },
 ): string {
+  const seed = `${prospect.email ?? prospect.company}`;
   const paragraphs = [
     prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
     withoutDuplicateGreeting(opening.hook, prospect.personName),
-    segmentLine(stats),
+    segmentLine(stats, seed),
     statsSentence(stats),
-    "Each one is scored, deduplicated, and delivered every morning to your phone or" +
-      " inbox. You would get the address, what happened, when, and the owner's" +
-      " mailing details where the county publishes them.",
-    "If that is worth having, reply and we can set up a short call to work out" +
-      " what it is worth to you. If not, no follow up.",
+    variant(seed, OFFER_LINES),
+    `If that is worth having, reply and we can set up a short call, ${variant(
+      seed,
+      CLOSE_LINES,
+    ).replace(/^and /, "")} If not, no follow up.`,
     `${sender.name}\n${sender.email}`,
     `If this is not relevant, reply no and I will not email you again.\n${sender.postalAddress}`,
   ];
@@ -234,6 +240,44 @@ export interface LeadSample {
   hasOwner: boolean;
 }
 
+
+/**
+ * Picks one of several phrasings, stably, from a seed.
+ *
+ * The template was the same bytes in every email, which made two hundred sends
+ * a near identical bulk pattern regardless of how well the opening was written.
+ * Measured across nineteen real drafts, fourteen pairs were over sixty percent
+ * identical.
+ *
+ * Seeded on the company so the same recipient always gets the same wording. A
+ * random pick would rewrite the email every time it was regenerated, and a
+ * prospect who was sent one version and then saw another would rightly wonder
+ * what else was generated.
+ */
+export function variant<T>(seed: string, options: readonly T[]): T {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return options[hash % options.length] as T;
+}
+
+const OFFER_LINES = [
+  "I put the day's list together every morning: the address, what was cited," +
+    " when, and the owner's details where the county publishes them.",
+  "Every morning I pull the new ones and write up the address, the citation," +
+    " the date, and whoever the county lists as the owner.",
+  "The list goes out each morning with the address, what the city cited, when" +
+    " it was filed, and the owner's details where they are public.",
+  "I check the filings daily and send over what is new: address, citation," +
+    " date, and the owner where the county names one.",
+];
+
+const CLOSE_LINES = [
+  "and we can work out what the list is worth to you.",
+  "and we can talk about what a fair price looks like for your size of operation.",
+  "and we can sort out pricing that makes sense for you.",
+  "and we can agree what it is worth to have it first.",
+];
+
 /**
  * Drops a greeting the model added on top of the one the template already wrote.
  *
@@ -296,25 +340,32 @@ export function assembleLeadPitch(
 
   const others = Math.max(0, stats.segmentCount - 1);
 
+  const seed = `${prospect.email ?? prospect.company}`;
+  const close = variant(seed, CLOSE_LINES);
   const reply = sender.phone
-    ? `Reply to this or call me on ${sender.phone} and we can work out what the` +
-      " list is worth to you."
-    : "Reply to this and we can set up a short call to work out what the list is" +
-      " worth to you.";
+    ? `Reply to this or call me on ${sender.phone} ${close}`
+    : `Reply to this and we can set up a short call, ${close.replace(/^and /, "")}`;
 
   const paragraphs = [
     prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
     withoutDuplicateGreeting(opening.hook, prospect.personName),
-    `One from ${when}: a property on ${where}, cited for ${sample.citation.toLowerCase()}.` +
-      (sample.hasOwner ? " The county publishes the owner's name and mailing address with it." : ""),
+    variant(seed, [
+      `One from ${when}: a property on ${where}, cited for ${sample.citation.toLowerCase()}.`,
+      `An example from ${when}: ${where}, cited for ${sample.citation.toLowerCase()}.`,
+      `To give you one, ${when}: a property on ${where}, cited for ${sample.citation.toLowerCase()}.`,
+    ]) + (sample.hasOwner ? " The county lists the owner's name and mailing address with it." : ""),
     others > 0
-      ? `There are ${others.toLocaleString()} more in ${stats.county} that are the same` +
-        " kind of work, and the owner of every one has been told by the city to deal" +
-        " with it."
+      ? variant(seed, [
+          `There are ${others.toLocaleString()} more in ${stats.county} that are the same` +
+            " kind of work, and the owner of every one has been told by the city to" +
+            " deal with it.",
+          `${others.toLocaleString()} others in ${stats.county} are the same kind of job,` +
+            " each with an owner the city has put on a deadline.",
+          `That is one of ${others.toLocaleString()} across ${stats.county} right now, all` +
+            " of them owners who have been ordered to fix something.",
+        ])
       : `I track every citation ${stats.county} files.`,
-    "I put the day's list together every morning: the address, what was cited," +
-      " when, and the owner's details where the county publishes them. Nobody else" +
-      " in your market is working it.",
+    variant(seed, OFFER_LINES),
     reply,
     `${sender.name}\n${sender.email}${sender.phone ? `\n${sender.phone}` : ""}`,
     `If this is not relevant, reply no and I will not email you again.\n${sender.postalAddress}`,

@@ -357,7 +357,12 @@ describe("what the lead email gives away", () => {
 
   it("offers a conversation about price, not free leads", () => {
     expect(body).not.toMatch(/no cost|free|at no charge/i);
-    expect(body).toMatch(/worth to you/);
+    // Two things at once: the closing line varies per company so two hundred
+    // sends are not two hundred copies, and the body is wrapped at 72 columns,
+    // so a phrase can be split across a line break. Assert the intent, on text
+    // with the wrapping collapsed.
+    const flat = body.replace(/\s+/g, " ");
+    expect(flat).toMatch(/worth to you|fair price|pricing that makes sense|worth to have it first/);
   });
 
   it("asks for a call when a number is set", () => {
@@ -402,5 +407,48 @@ describe("greeting the same person twice", () => {
 
   it("does nothing when nobody is named", () => {
     expect(withoutDuplicateGreeting("Mike, hello.", null)).toBe("Mike, hello.");
+  });
+});
+
+describe("two hundred emails that are not the same email", () => {
+  const stats = { ...MILWAUKEE, segmentLabel: "Lawn care", segmentCount: 134, examples: [] };
+  const body = (email: string) =>
+    assembleLeadPitch(
+      { ...PROSPECT, email, personName: null },
+      {
+        address: "77 POPLAR",
+        city: "BUFFALO",
+        citation: "Weeds",
+        occurredAt: new Date("2026-08-01"),
+        hasOwner: true,
+      },
+      stats,
+      { subject: "s", hook: "H." },
+      SENDER,
+      new Date("2026-08-13"),
+    );
+
+  it("gives the same company the same wording every time", () => {
+    // A random pick would rewrite the email on every regeneration, and someone
+    // who saw two versions would rightly wonder what else was generated.
+    expect(body("a@x.com")).toBe(body("a@x.com"));
+  });
+
+  it("gives different companies different wording", () => {
+    const many = ["a@x.com", "b@y.com", "c@z.com", "d@w.com", "e@v.com", "f@u.com"].map(body);
+    // The template used to be the same bytes in every email, which is the
+    // bulk pattern filters look for regardless of how well the opening reads.
+    expect(new Set(many).size).toBeGreaterThan(1);
+  });
+
+  it("keeps every variant saying the same thing", () => {
+    for (const email of ["a@x.com", "b@y.com", "c@z.com", "d@w.com"]) {
+      const text = body(email);
+      expect(text).toContain("POPLAR");
+      expect(text).toMatch(/134|133/);
+      expect(text).toContain("reply no and I will not email you again");
+      expect(text).not.toMatch(/[—–]/);
+      expect(text).not.toMatch(/no cost|\bfree\b/i);
+    }
   });
 });

@@ -4,7 +4,7 @@ import { log } from "../lib/log";
 import { segment as findSegment } from "./buyers";
 import { openMailbox, type MailboxCredentials } from "./mail-draft";
 import { segmentStats, type SegmentStats } from "./market-stats";
-import { allBoards, bestLeadFor, type MarketBoard } from "./match";
+import { allBoards, assignLeads, type MarketBoard, type MatchedLead } from "./match";
 import { assembleLeadPitch, assemblePitch, draftPitch } from "./pitch";
 import { draftableProspects, markDrafted, type ProspectRow } from "./store";
 
@@ -58,8 +58,11 @@ export async function draftBatch(
     return { drafted: 0, skipped, seconds: 0 };
   }
 
-  // Every market's board once, not once per company.
-  const boards: MarketBoard[] = await allBoards(client, 8, await draftableProspects(client, 2000));
+  // Every market's board once, not once per company. A deeper board than the
+  // desk shows, because each company needs a property of its own and five per
+  // market runs out fast.
+  const boards: MarketBoard[] = await allBoards(client, 40, await draftableProspects(client, 2000));
+  const leads: Map<string, MatchedLead> = assignLeads(boards, prospects.map((p) => p.id));
 
   // The same market and trade produce the same figures for every company in
   // them, so a hundred Buffalo landscapers is one calculation rather than a
@@ -93,7 +96,7 @@ export async function draftBatch(
       }
 
       const opening = await draftPitch(client, tenant, prospect, stats, buyer, now);
-      const lead = bestLeadFor(boards, prospect.id);
+      const lead = leads.get(prospect.id);
 
       const body = lead
         ? assembleLeadPitch(
