@@ -1,14 +1,14 @@
 import { config as loadEnv } from "dotenv";
 import { createWorkerClient } from "./db";
-import { log } from "./lib/log";
-import { appendDraft, mailboxCredentials, unknownHostHelp } from "./prospect/mail-draft";
-import { marketStats, segmentStats, statsSentence } from "./prospect/market-stats";
-import { BUYER_SEGMENTS, segment as findSegment } from "./prospect/buyers";
-import { assemblePitch, draftPitch } from "./prospect/pitch";
-import { draftableProspects, markDrafted, suppress } from "./prospect/store";
+
+import { mailboxCredentials, unknownHostHelp } from "./prospect/mail-draft";
+import { marketStats, statsSentence } from "./prospect/market-stats";
+
+
+import { suppress } from "./prospect/store";
 import { importSites, type ImportTarget } from "./prospect/import";
-import { allBoards, bestLeadFor } from "./prospect/match";
-import { assembleLeadPitch } from "./prospect/pitch";
+import { draftBatch } from "./prospect/batch";
+
 import { readFileSync } from "node:fs";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
@@ -67,91 +67,30 @@ async function draft(limit: number, fips?: string): Promise<void> {
     process.exit(1);
   }
 
-  const prospects = await draftableProspects(client, limit, fips);
+  const { data: tenantRow } = await client.from("tenants").select("id, plan").limit(1).single();
+  const tenant = { id: String(tenantRow?.id), plan: String(tenantRow?.plan ?? "solo") };
 
-  // Computed once for the whole run rather than per prospect, so a batch of ten
-  // is one pass over the boards instead of ten.
-  const boards = await allBoards(client, 8, await draftableProspects(client, 500));
-  if (prospects.length === 0) {
+  const result = await draftBatch(client, credentials, from, tenant, limit, now, fips);
+
+  if (result.drafted === 0 && result.skipped.length === 0) {
     process.stdout.write(
-      "Nothing draftable. A prospect needs a verified address, a named person,\n" +
-        "and no previous draft. Add some with the importer first.\n",
+      "Nothing draftable. A company needs a contactable address and no previous\n" +
+        "draft. Add more with prospect import.\n",
     );
     return;
   }
 
-  // Metered against a tenant so prospecting spend lands in usage_ledger with
-  // everything else rather than being an untracked side channel.
-  const { data: tenantRow } = await client.from("tenants").select("id, plan").limit(1).single();
-  const tenant = { id: String(tenantRow?.id), plan: String(tenantRow?.plan ?? "solo") };
-
-  let drafted = 0;
-  for (const prospect of prospects) {
-    if (!prospect.email || !prospect.fips) continue;
-
-    try {
-      // Which trade they are, stored on the prospect at import. Without it the
-      // pitch falls back to a county total, which is the generic vendor email.
-      const buyer = findSegment(prospect.segment);
-      const stats = await segmentStats(client, prospect.fips, buyer, now);
-      if (stats.total === 0) {
-        log.warn("skipping, nothing to sell them", {
-          company: prospect.company,
-          fips: prospect.fips,
-        });
-        continue;
-      }
-
-      const opening = await draftPitch(client, tenant, prospect, stats, buyer, now);
-
-      // A specific property beats a county total, so the per lead email is used
-      // whenever this company has a lead of their own to be told about.
-      const lead = bestLeadFor(boards, prospect.id);
-      const body = lead
-        ? assembleLeadPitch(
-            prospect,
-            {
-              address: lead.event.property.address ?? "",
-              city: lead.event.property.city ?? null,
-              citation: lead.citation || buyer.label,
-              occurredAt: lead.event.occurredAt,
-              hasOwner: lead.event.parties.length > 0,
-            },
-            stats,
-            opening,
-            from,
-            now,
-          )
-        : assemblePitch(prospect, stats, opening, from);
-
-      await appendDraft(
-        credentials,
-        {
-          to: prospect.email,
-          subject: opening.subject,
-          body,
-          fromName: from.name,
-          fromEmail: from.email,
-        },
-        now,
-      );
-
-      await markDrafted(client, prospect.id, now);
-      drafted += 1;
-      log.info("draft created", { company: prospect.company, subject: opening.subject });
-    } catch (error) {
-      // One prospect failing is not the run failing. A refusal or a bad
-      // generation should cost that draft and nothing else.
-      log.error("draft failed", {
-        company: prospect.company,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+  for (const item of result.skipped.slice(0, 10)) {
+    process.stdout.write(`  skipped ${item.company}: ${item.reason}\n`);
+  }
+  if (result.skipped.length > 10) {
+    process.stdout.write(`  and ${result.skipped.length - 10} more skipped\n`);
   }
 
   process.stdout.write(
-    `\n${drafted} draft${drafted === 1 ? "" : "s"} waiting in your Drafts folder. Read\n` +
-      "every one before sending. Nothing has been sent.\n",
+    `\n${result.drafted} draft${result.drafted === 1 ? "" : "s"} waiting in your Drafts\n` +
+      `folder, written in ${result.seconds}s. Read every one before sending.\n` +
+      "Nothing has been sent.\n",
   );
 }
 

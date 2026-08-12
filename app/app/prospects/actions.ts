@@ -10,6 +10,7 @@ import { citationLabel, segmentStats } from "@firstknock/worker/prospect/market-
 import { allBoards, bestLeadFor } from "@firstknock/worker/prospect/match";
 import { assembleLeadPitch, assemblePitch, draftPitch } from "@firstknock/worker/prospect/pitch";
 import { draftableProspects, markDrafted, nameFromMailbox, suppress } from "@firstknock/worker/prospect/store";
+import { draftBatch } from "@firstknock/worker/prospect/batch";
 
 export interface DraftResult {
   drafted: number;
@@ -60,83 +61,24 @@ export async function draftEmails(count: number): Promise<DraftResult> {
   }
 
   const client = operatorClient();
-  const now = new Date();
-  const prospects = await draftableProspects(client, count);
-
-  if (prospects.length === 0) {
-    return { drafted: 0, skipped: [], error: "Nothing left to draft. Import more prospects first." };
-  }
-
   const { data: tenantRow } = await client.from("tenants").select("id, plan").limit(1).single();
   const tenant = { id: String(tenantRow?.id), plan: String(tenantRow?.plan ?? "solo") };
 
-  // One pass for the whole batch, so the button sends the same specific email
-  // the daily desk does rather than a weaker county wide one.
-  const boards = await allBoards(client, 8, await draftableProspects(client, 500));
-
-  let drafted = 0;
-  const skipped: DraftResult["skipped"] = [];
-
-  for (const prospect of prospects) {
-    if (!prospect.email || !prospect.fips) {
-      skipped.push({ company: prospect.company, reason: "no email or market" });
-      continue;
-    }
-
-    try {
-      const buyer = findSegment(prospect.segment);
-      const stats = await segmentStats(client, prospect.fips, buyer, now);
-      if (stats.total === 0) {
-        skipped.push({ company: prospect.company, reason: "nothing on file for their county" });
-        continue;
-      }
-
-      const opening = await draftPitch(client, tenant, prospect, stats, buyer, now);
-
-      const lead = bestLeadFor(boards, prospect.id);
-      const body = lead
-        ? assembleLeadPitch(
-            prospect,
-            {
-              address: lead.event.property.address ?? "",
-              city: lead.event.property.city ?? null,
-              citation: lead.citation || buyer.label,
-              occurredAt: lead.event.occurredAt,
-              hasOwner: lead.event.parties.length > 0,
-            },
-            stats,
-            opening,
-            from,
-            now,
-          )
-        : assemblePitch(prospect, stats, opening, from);
-
-      await appendDraft(
-        credentials,
-        {
-          to: prospect.email,
-          subject: opening.subject,
-          body,
-          fromName: from.name,
-          fromEmail: from.email,
-        },
-        now,
-      );
-
-      await markDrafted(client, prospect.id, now);
-      drafted += 1;
-    } catch (error) {
-      // One prospect failing is not the run failing, and the reason is shown
-      // rather than swallowed, so a repeated failure is visible.
-      skipped.push({
-        company: prospect.company,
-        reason: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  // The same batch path the command line uses. One mailbox login, market figures
+  // worked out once per market and trade, a few model calls at a time.
+  const result = await draftBatch(client, credentials, from, tenant, count, new Date());
 
   revalidatePath("/prospects");
-  return { drafted, skipped, error: null };
+  revalidatePath("/daily");
+
+  return {
+    drafted: result.drafted,
+    skipped: result.skipped,
+    error:
+      result.drafted === 0 && result.skipped.length === 0
+        ? "Nothing left to draft. Add more companies first."
+        : null,
+  };
 }
 
 /** Takes someone out of every future campaign, permanently. */

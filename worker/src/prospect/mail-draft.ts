@@ -164,3 +164,45 @@ export async function appendDraft(
     await imap.logout();
   }
 }
+
+export interface MailSession {
+  append(message: DraftMessage, date: Date): Promise<void>;
+  close(): Promise<void>;
+}
+
+/**
+ * One connection, many drafts.
+ *
+ * appendDraft opens a connection, appends, and logs out, which is right for a
+ * single draft and ruinous for two hundred: it is two hundred TLS handshakes
+ * and logins, and providers rate limit exactly that pattern. A batch run opens
+ * the mailbox once and holds it.
+ *
+ * The drafts folder is looked up once too, rather than listing every folder on
+ * the account before each message.
+ */
+export async function openMailbox(credentials: MailboxCredentials): Promise<MailSession> {
+  const imap = new ImapFlow({
+    host: credentials.host,
+    port: credentials.port,
+    secure: true,
+    auth: { user: credentials.user, pass: credentials.appPassword },
+    logger: false,
+    connectionTimeout: 15_000,
+    greetingTimeout: 10_000,
+    // Generous, because a long batch keeps this open between Claude calls.
+    socketTimeout: 180_000,
+  });
+
+  await imap.connect();
+  const drafts = await findDraftsFolder(imap);
+
+  return {
+    async append(message, date) {
+      await imap.append(drafts, buildMime(message, date), ["\\Draft"], date);
+    },
+    async close() {
+      await imap.logout();
+    },
+  };
+}

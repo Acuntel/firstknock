@@ -29,7 +29,8 @@
     "./prospect/pitch": "./src/prospect/pitch.ts",
     "./prospect/store": "./src/prospect/store.ts",
     "./prospect/import": "./src/prospect/import.ts",
-    "./prospect/match": "./src/prospect/match.ts"
+    "./prospect/match": "./src/prospect/match.ts",
+    "./prospect/batch": "./src/prospect/batch.ts"
   },
   "scripts": {
     "once": "tsx src/run-once.ts",
