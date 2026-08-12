@@ -55,6 +55,11 @@ const SYSTEM = [
   "- No em dashes, no en dashes, no exclamation marks, no 'Dear', no 'I hope this finds you'.",
   "- No hype adjectives: no 'exciting', 'incredible', 'game changing', 'revolutionary', 'unlock'.",
   "- Subject under 60 characters, lower key than a marketing line, no colon stacking.",
+  "- Never put an ordinance number, section number or code in the subject.",
+  "  'SPCC 27-43' reads as spam to the one person who would recognise the word after it.",
+  "- Name the city they work in, not the county. A Buffalo contractor thinks Buffalo, not Erie.",
+  "- Never name the sender or the product in the subject. 'FirstKnock leads' is what",
+  "  every vendor writes and it gets deleted unopened.",
   "- Plain sentences an operator would actually write. Two sentences maximum in the hook.",
   "- Do not make the offer or describe the service. The email does that after you.",
   "- Write as one person, not a company. Never 'we'.",
@@ -66,7 +71,7 @@ function prompt(prospect: Prospect, stats: SegmentStats, segment: BuyerSegment):
     `What they do: ${segment.label}`,
     prospect.personName ? `Person: ${prospect.personName}` : null,
     prospect.personRole ? `Their role: ${prospect.personRole}` : null,
-    prospect.city ? `Their city: ${prospect.city}` : null,
+    prospect.city ? `Their city, which is what to name: ${prospect.city}` : null,
     prospect.website ? `Their website: ${prospect.website}` : null,
     `Market being offered: ${stats.county}`,
     `Why this data is worth money to them: ${segment.why}`,
@@ -222,6 +227,14 @@ export async function draftPitch(
       if (text.includes("!")) throw new Error("Model used an exclamation mark");
       if (/\bDear\b/i.test(text)) throw new Error("Model opened with Dear");
       if (value.subject.length > 60) throw new Error("Subject too long");
+      // Enforced rather than requested. An ordinance number in a subject line
+      // is the single thing that makes this look like a phishing notice.
+      if (/\b(sec|section)\.?\s*\d|\b[A-Z]{3,}\s*\d{2,}|\b\d{2,}-\d{2,}\b/.test(value.subject)) {
+        throw new Error("Model put an ordinance code in the subject");
+      }
+      if (/firstknock/i.test(value.subject)) {
+        throw new Error("Model put the product name in the subject");
+      }
       return value;
     },
   });

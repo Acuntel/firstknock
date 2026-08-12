@@ -452,3 +452,32 @@ describe("two hundred emails that are not the same email", () => {
     }
   });
 });
+
+describe("keeping ordinance codes out of the writing", () => {
+  it("keeps only the part of a citation that describes something", () => {
+    // The county writes the ordinance and the description together in several
+    // different punctuations, and only the description means anything.
+    expect(citationLabel({ violation: "SPCC-Sec. 27-133 Registration" })).toBe("Registration");
+    expect(citationLabel({ violation: "SPCC 27-43 (e) (1)(2)(3)(4) Certification" })).toBe(
+      "Certification",
+    );
+    expect(citationLabel({ violation: "2025 PMCNYS - Section 309.1 - Infestation" })).toBe(
+      "Infestation",
+    );
+  });
+
+  it("does not mistake a hyphenated word for an ordinance separator", () => {
+    // Splitting on any dash turned this into "family dwelling", which throws
+    // away the only words a landscaper would have recognised.
+    expect(citationLabel({ violation: "Excessive weeds or plant growth one- or two-family dwelling" })).toContain(
+      "Excessive weeds",
+    );
+  });
+
+  it("leaves a plain description alone", () => {
+    expect(citationLabel({ violation: "Interior Surfaces" })).toBe("Interior Surfaces");
+    expect(citationLabel({ violation: "Window, Skylight and Door Frame" })).toBe(
+      "Window, Skylight and Door Frame",
+    );
+  });
+});

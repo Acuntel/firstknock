@@ -197,19 +197,59 @@ export function citationLabel(raw: unknown): string {
     const value = String(record[field] ?? "").replace(/\s+/g, " ").trim();
     if (value.length <= 3) continue;
 
-    const tail = value.split(/\s+-\s*|\s*-\s+/).pop()?.trim() ?? value;
-
-    // Only a genuinely parenthesised marker like "(e)" is dropped. An earlier
-    // version stripped any leading few characters and turned "Accumulation"
-    // into "mulation" and "Overgrowth" into "growth".
-    const label = tail
-      .replace(/^\([a-z0-9]{1,3}\)\s*/i, "")
-      .replace(/^[\s\-–,;:.]+|[\s\-–,;:.]+$/g, "")
-      .trim();
-
+    const label = describeOnly(value);
     if (label.length > 3 && !USELESS_LABELS.test(label)) return label;
   }
   return "";
+}
+
+/** A token that identifies an ordinance rather than describing anything. */
+function isCodeToken(token: string): boolean {
+  return (
+    // Parenthesised markers only. An earlier version treated any word of four
+    // letters or fewer as a code, which ate "Tall" out of "Tall Grass and
+    // Weeds" and would have eaten "Roof" and "Junk" too.
+    /^(\([a-z0-9]{1,3}\))+[.,]?$/i.test(token) ||
+    /^[a-z0-9][.,)]?$/i.test(token) || // a single stray letter or digit
+    /^\d/.test(token) || // 27, 133, 309.1, 2025
+    /^(sec|section|sect|art|article|chap|chapter|ord|ordinance)\.?$/i.test(token) ||
+    // An all caps acronym, which is how counties name their codes. Two letters
+    // up, so Buffalo's RR prefix is caught. Requiring every letter to be capital
+    // is what keeps ordinary words like Tall and Roof out.
+    /^[A-Z][A-Z0-9]{1,9}\.?$/.test(token)
+  );
+}
+
+/**
+ * Keeps the part of a citation that describes the problem.
+ *
+ * Counties separate the ordinance from the description inconsistently:
+ * "PMCNYS - Section 309.1 - Infestation" has spaced dashes, while
+ * "SPCC-Sec. 27-133 Registration" has none at all. Splitting on dashes handled
+ * the first and let the second through whole, and the model then put
+ * "SPCC 27-43" in a subject line, which reads as spam to the one person who
+ * would otherwise have recognised the word after it.
+ *
+ * So this walks tokens from the left and drops everything that identifies an
+ * ordinance, stopping at the first word that says something. If nothing is
+ * left, the original is returned rather than an empty string, because a
+ * citation that is only a code is better handled by USELESS_LABELS above.
+ */
+export function describeOnly(value: string): string {
+  // No dash splitting. An earlier version split on any dash with space beside
+  // it, which turned "Excessive weeds or plant growth one- or two-family
+  // dwelling" into "family dwelling" by treating the hyphen in "one- or" as a
+  // separator. Dropping code tokens from the left handles both spellings of
+  // the ordinance prefix without needing to know how it was punctuated.
+  const tokens = value.split(/[\s-]+/).filter(Boolean);
+
+  let start = 0;
+  while (start < tokens.length && isCodeToken(tokens[start] as string)) start += 1;
+
+  const described = tokens.slice(start).join(" ").trim();
+  // Punctuation trimmed off the fallback too, so a bare "-GENERAL" is judged
+  // as GENERAL by the useless label test rather than sneaking past it.
+  return described.length > 3 ? described : value.replace(/^[\s\-–,;:.]+|[\s\-–,;:.]+$/g, "").trim();
 }
 
 
