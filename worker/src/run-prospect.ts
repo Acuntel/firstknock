@@ -1,7 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { createWorkerClient } from "./db";
 import { log } from "./lib/log";
-import { appendDraft, gmailCredentials } from "./prospect/gmail-draft";
+import { appendDraft, mailboxCredentials, unknownHostHelp } from "./prospect/mail-draft";
 import { marketStats, statsSentence } from "./prospect/market-stats";
 import { assemblePitch, draftPitch } from "./prospect/pitch";
 import { draftableProspects, markDrafted, suppress } from "./prospect/store";
@@ -9,10 +9,10 @@ import { draftableProspects, markDrafted, suppress } from "./prospect/store";
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
 
 /**
- * The outreach run. It writes Gmail drafts and never sends.
+ * The outreach run. It writes drafts to your own mailbox and never sends.
  *
  *   pnpm --filter worker prospect stats            what every market can prove
- *   pnpm --filter worker prospect draft 10         draft up to 10, review in Gmail
+ *   pnpm --filter worker prospect draft 10         draft up to 10, then review them
  *   pnpm --filter worker prospect draft 10 36029   only the Buffalo market
  *   pnpm --filter worker prospect suppress a@b.com they asked to be left alone
  */
@@ -20,7 +20,7 @@ const MARKETS = ["55079", "36067", "36029", "26163"];
 
 function sender() {
   const name = process.env.PROSPECT_SENDER_NAME;
-  const email = process.env.GMAIL_USER;
+  const email = process.env.MAIL_USER ?? process.env.GMAIL_USER;
   const postalAddress = process.env.PROSPECT_POSTAL_ADDRESS;
   if (!name || !email || !postalAddress) return null;
   return { name, email, postalAddress };
@@ -39,11 +39,15 @@ async function draft(limit: number, fips?: string): Promise<void> {
   const client = createWorkerClient();
   const now = new Date();
 
-  const credentials = gmailCredentials();
+  const credentials = mailboxCredentials();
   if (!credentials) {
+    const user = process.env.MAIL_USER ?? process.env.GMAIL_USER;
     process.stderr.write(
-      "GMAIL_USER and GMAIL_APP_PASSWORD are not set. Create an app password at\n" +
-        "myaccount.google.com/apppasswords, which is not your account password.\n",
+      user
+        ? `${unknownHostHelp(user)}\n`
+        : "MAIL_USER and MAIL_APP_PASSWORD are not set. Use an app specific\n" +
+          "password, never the account password. iCloud issues them at\n" +
+          "appleid.apple.com, Google at myaccount.google.com/apppasswords.\n",
     );
     process.exit(1);
   }
@@ -114,8 +118,8 @@ async function draft(limit: number, fips?: string): Promise<void> {
   }
 
   process.stdout.write(
-    `\n${drafted} draft${drafted === 1 ? "" : "s"} waiting in Gmail. Read every one\n` +
-      "before sending. Nothing has been sent.\n",
+    `\n${drafted} draft${drafted === 1 ? "" : "s"} waiting in your Drafts folder. Read\n` +
+      "every one before sending. Nothing has been sent.\n",
   );
 }
 

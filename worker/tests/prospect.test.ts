@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMime } from "../src/prospect/gmail-draft";
+import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mail-draft";
 import { statsSentence, type MarketStats } from "../src/prospect/market-stats";
 import { assemblePitch, type Prospect } from "../src/prospect/pitch";
 
@@ -132,5 +132,46 @@ describe("draft encoding", () => {
     );
     expect(mime).toContain("\r\n\r\nline one\nline two");
     expect(mime).toContain("Content-Type: text/plain; charset=utf-8");
+  });
+});
+
+describe("which mailbox to connect to", () => {
+  it("works out the host from the address for the common providers", () => {
+    expect(hostForAddress("ben@icloud.com")?.host).toBe("imap.mail.me.com");
+    expect(hostForAddress("ben@me.com")?.host).toBe("imap.mail.me.com");
+    expect(hostForAddress("ben@gmail.com")?.host).toBe("imap.gmail.com");
+    expect(hostForAddress("ben@outlook.com")?.host).toBe("outlook.office365.com");
+  });
+
+  it("cannot guess a custom domain, which is why the override exists", () => {
+    // hello@lentamente.us is an iCloud+ custom domain and still connects to
+    // Apple, so no amount of reading the address would get this right.
+    expect(hostForAddress("hello@lentamente.us")).toBeNull();
+  });
+});
+
+describe("finding the drafts folder", () => {
+  const listing = (boxes: Array<{ path: string; specialUse?: string }>) =>
+    ({ list: async () => boxes }) as never;
+
+  it("prefers the special use flag over the folder name", async () => {
+    // Gmail calls it [Gmail]/Drafts and iCloud calls it Drafts. The flag is the
+    // same on both, which is why it is read first.
+    await expect(
+      findDraftsFolder(listing([{ path: "INBOX" }, { path: "Entwürfe", specialUse: "\\Drafts" }])),
+    ).resolves.toBe("Entwürfe");
+  });
+
+  it("falls back to known names when the server flags nothing", async () => {
+    await expect(
+      findDraftsFolder(listing([{ path: "INBOX" }, { path: "[Gmail]/Drafts" }])),
+    ).resolves.toBe("[Gmail]/Drafts");
+    await expect(
+      findDraftsFolder(listing([{ path: "INBOX" }, { path: "Drafts" }])),
+    ).resolves.toBe("Drafts");
+  });
+
+  it("says so rather than appending a draft somewhere wrong", async () => {
+    await expect(findDraftsFolder(listing([{ path: "INBOX" }]))).rejects.toThrow(/No drafts folder/);
   });
 });
