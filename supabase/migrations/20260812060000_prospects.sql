@@ -25,6 +25,12 @@ create table if not exists prospects (
   -- verifier leaves anything it could not fully prove as "guessed".
   email_confidence text not null default 'guessed',
 
+  -- Addresses are stored lowercase so the unique index below can be a plain one
+  -- on the column. Enforced here rather than trusted to the importer, because
+  -- one capitalised address slipping through is a duplicate email to a person
+  -- who already heard from us.
+  constraint prospects_email_lowercase check (email is null or email = lower(email)),
+
   status text not null default 'new',
   do_not_contact boolean not null default false,
   -- Why they are excluded, so a blanket suppression can be told apart from a
@@ -43,9 +49,13 @@ create table if not exists prospects (
 -- One address is only ever drafted once across the whole campaign. The unique
 -- index is what enforces that rather than a check in application code, because
 -- two runs racing is exactly when a duplicate gets through.
-create unique index if not exists prospects_email_key
-  on prospects (lower(email))
-  where email is not null;
+--
+-- A plain index on the column, not a partial one on lower(email). The importer
+-- upserts with on conflict (email), and Postgres cannot use a partial or
+-- expression index to resolve that, so the clever version would have failed
+-- every deduplication at runtime. Postgres already allows many nulls in a
+-- unique index, so no where clause is needed to let unaddressed rows coexist.
+create unique index if not exists prospects_email_key on prospects (email);
 
 create index if not exists prospects_status_idx on prospects (status);
 create index if not exists prospects_fips_idx on prospects (fips);
