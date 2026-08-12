@@ -22,7 +22,12 @@
     "./event-row": "./src/event-row.ts",
     "./registry": "./src/registry.ts",
     "./billing/plans": "./src/billing/plans.ts",
-    "./telegram/connect": "./src/telegram/connect.ts"
+    "./telegram/connect": "./src/telegram/connect.ts",
+    "./prospect/buyers": "./src/prospect/buyers.ts",
+    "./prospect/mail-draft": "./src/prospect/mail-draft.ts",
+    "./prospect/market-stats": "./src/prospect/market-stats.ts",
+    "./prospect/pitch": "./src/prospect/pitch.ts",
+    "./prospect/store": "./src/prospect/store.ts"
   },
   "scripts": {
     "once": "tsx src/run-once.ts",

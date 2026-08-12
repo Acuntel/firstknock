@@ -6,6 +6,7 @@ const NAV = [
   { path: "/today", label: "Today" },
   { path: "/board", label: "Board" },
   { path: "/sources", label: "Sources" },
+  { path: "/prospects", label: "Prospects" },
   { path: "/settings", label: "Settings" },
 ];
 
