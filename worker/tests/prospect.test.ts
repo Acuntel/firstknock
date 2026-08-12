@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mail-draft";
-import { statsSentence, type MarketStats } from "../src/prospect/market-stats";
+import { citationLabel, statsSentence, type MarketStats } from "../src/prospect/market-stats";
 import { assemblePitch, wrap, type Prospect } from "../src/prospect/pitch";
 import { nameMatchesMailbox } from "../src/prospect/store";
 import { scrapeCompanyName } from "../src/prospect/scraper";
@@ -246,5 +246,38 @@ describe("reading a company name off a page", () => {
 
   it("keeps the name and drops the tagline after it", () => {
     expect(scrapeCompanyName(title("716 Lawn Care | Best Landscaping in Buffalo"))).toBe("716 Lawn Care");
+  });
+});
+
+describe("quoting a citation back to a contractor", () => {
+  const label = (violation: string) => citationLabel({ violation });
+
+  it("keeps only the part that says what is wrong", () => {
+    expect(label("SPCC - Section 27-72 (f) - Overgrowth")).toBe("Overgrowth");
+    expect(label("2025 PMCNYS - Section 305.3 - Interior Surfaces")).toBe("Interior Surfaces");
+    expect(label("SPCC - Section 27-72 (e) -Trash & Debris")).toBe("Trash & Debris");
+  });
+
+  it("never eats the front of a real word", () => {
+    // An earlier version stripped any leading few characters and produced
+    // "mulation of Rubbish" and "growth", which is worse than quoting nothing.
+    expect(label("2025 PMCNYS - Section 308.1 - Accumulation of Rubbish")).toBe(
+      "Accumulation of Rubbish",
+    );
+    expect(label("Rubbish Storage Facilities")).toBe("Rubbish Storage Facilities");
+  });
+
+  it("rejects a label that describes nothing", () => {
+    // Buffalo files most cases as GENERAL, and "cited as GENERAL" is worse than
+    // quoting nothing at all.
+    expect(label("GENERAL")).toBe("");
+    expect(label("RR-GENERAL")).toBe("");
+    expect(label("-GENERAL")).toBe("");
+  });
+
+  it("falls through to the next field when the first is useless", () => {
+    expect(citationLabel({ violation: "GENERAL", complaint_type_name: "Tall Grass and Weeds" })).toBe(
+      "Tall Grass and Weeds",
+    );
   });
 });

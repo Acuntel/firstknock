@@ -120,3 +120,113 @@ export function statsSentence(stats: MarketStats): string {
 
   return `${parts.join(", ")}.`;
 }
+
+export interface SegmentStats extends MarketStats {
+  segmentLabel: string;
+  /** Citations in this county that are this trade's kind of work. */
+  segmentCount: number;
+  /** A few real citation texts, so the pitch can quote what was actually cited. */
+  examples: string[];
+}
+
+/**
+ * Fields a county might put the citation text in, best first.
+ *
+ * The first populated one wins rather than all of them joined. Joining produced
+ * "Trash & Debris Rental Registry", which is two unrelated fields stuck
+ * together and reads as gibberish to the one person who would recognise it.
+ */
+const CITATION_FIELDS = ["violation", "complaint_type_name", "case_type", "description"];
+
+/** Everything a citation says, for keyword matching where more text is better. */
+export function citationText(raw: unknown): string {
+  const record = (raw ?? {}) as Record<string, unknown>;
+  return CITATION_FIELDS.map((field) => String(record[field] ?? "")).join(" ").trim();
+}
+
+/**
+ * The single cleanest description, for quoting back to a prospect.
+ *
+ * Counties write citations as "ordinance - section - what is actually wrong",
+ * and only the last part means anything to a contractor. Splitting on a dash
+ * that has whitespace beside it keeps section numbers like 27-72 intact while
+ * dropping the legal preamble nobody reads.
+ *
+ * Labels that describe nothing are rejected outright. Buffalo files most of its
+ * cases as GENERAL, and quoting "cited as GENERAL" back at a prospect is worse
+ * than quoting nothing.
+ */
+const USELESS_LABELS = /^(general|rr-?general|other|misc|miscellaneous|n\/?a|none|unknown)$/i;
+
+export function citationLabel(raw: unknown): string {
+  const record = (raw ?? {}) as Record<string, unknown>;
+  for (const field of CITATION_FIELDS) {
+    const value = String(record[field] ?? "").replace(/\s+/g, " ").trim();
+    if (value.length <= 3) continue;
+
+    const tail = value.split(/\s+-\s*|\s*-\s+/).pop()?.trim() ?? value;
+
+    // Only a genuinely parenthesised marker like "(e)" is dropped. An earlier
+    // version stripped any leading few characters and turned "Accumulation"
+    // into "mulation" and "Overgrowth" into "growth".
+    const label = tail
+      .replace(/^\([a-z0-9]{1,3}\)\s*/i, "")
+      .replace(/^[\s\-–,;:.]+|[\s\-–,;:.]+$/g, "")
+      .trim();
+
+    if (label.length > 3 && !USELESS_LABELS.test(label)) return label;
+  }
+  return "";
+}
+
+
+/**
+ * What one county holds for one trade.
+ *
+ * The county wide number is true but generic, and generic is what makes a cold
+ * email indistinguishable from every other lead vendor. A landscaper does not
+ * care that there are 4,204 open cases in Erie County. They care that 134 of
+ * them are overgrowth, which is a job they do, on a property whose owner has
+ * been ordered to deal with it.
+ *
+ * Counted rather than estimated, and the examples are real citation lines, so
+ * the claim survives the prospect checking it.
+ */
+export async function segmentStats(
+  client: SupabaseClient,
+  fips: string,
+  segment: { label: string; citationKeywords?: string[] },
+  now: Date,
+  sampleCap = 5000,
+): Promise<SegmentStats> {
+  const base = await marketStats(client, fips, now);
+
+  const { data } = await client
+    .from("events")
+    .select("raw")
+    .eq("fips", fips)
+    .order("occurred_at", { ascending: false })
+    .limit(sampleCap);
+
+  const keywords = segment.citationKeywords;
+  const kept = (data ?? []).filter((row) => {
+    if (!keywords) return true;
+    const lower = citationText(row.raw).toLowerCase();
+    return keywords.some((word) => lower.includes(word));
+  });
+  const matches = kept;
+  const labels = kept.map((row) => citationLabel(row.raw));
+
+  // Deduplicated, because a county cites the same section hundreds of times and
+  // three identical examples read as one example.
+  const examples = [...new Set(labels)]
+    .filter((m) => m.length > 3 && m.length < 60)
+    .slice(0, 3);
+
+  return {
+    ...base,
+    segmentLabel: segment.label,
+    segmentCount: matches.length,
+    examples,
+  };
+}

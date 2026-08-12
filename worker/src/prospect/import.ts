@@ -90,6 +90,7 @@ export async function importSite(
     personRole: person?.role ?? undefined,
     email: contact.email,
     emailConfidence: confidenceFrom(verification, contact.onDomain),
+    segment: target.segment,
   };
 
   const added = await upsertProspects(client, [input]);

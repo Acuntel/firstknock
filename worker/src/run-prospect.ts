@@ -2,7 +2,8 @@ import { config as loadEnv } from "dotenv";
 import { createWorkerClient } from "./db";
 import { log } from "./lib/log";
 import { appendDraft, mailboxCredentials, unknownHostHelp } from "./prospect/mail-draft";
-import { marketStats, statsSentence } from "./prospect/market-stats";
+import { marketStats, segmentStats, statsSentence } from "./prospect/market-stats";
+import { BUYER_SEGMENTS, segment as findSegment } from "./prospect/buyers";
 import { assemblePitch, draftPitch } from "./prospect/pitch";
 import { draftableProspects, markDrafted, suppress } from "./prospect/store";
 import { importSites, type ImportTarget } from "./prospect/import";
@@ -83,7 +84,10 @@ async function draft(limit: number, fips?: string): Promise<void> {
     if (!prospect.email || !prospect.fips) continue;
 
     try {
-      const stats = await marketStats(client, prospect.fips, now);
+      // Which trade they are, stored on the prospect at import. Without it the
+      // pitch falls back to a county total, which is the generic vendor email.
+      const buyer = findSegment(prospect.segment);
+      const stats = await segmentStats(client, prospect.fips, buyer, now);
       if (stats.total === 0) {
         log.warn("skipping, nothing to sell them", {
           company: prospect.company,
@@ -92,7 +96,7 @@ async function draft(limit: number, fips?: string): Promise<void> {
         continue;
       }
 
-      const opening = await draftPitch(client, tenant, prospect, stats, now);
+      const opening = await draftPitch(client, tenant, prospect, stats, buyer, now);
       const body = assemblePitch(prospect, stats, opening, from);
 
       await appendDraft(

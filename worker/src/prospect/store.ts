@@ -6,6 +6,8 @@ export interface ProspectRow extends Prospect {
   emailConfidence: string;
   status: string;
   doNotContact: boolean;
+  /** Which buyer segment they belong to, from buyers.ts. */
+  segment: string;
 }
 
 function toProspect(row: Record<string, unknown>): ProspectRow {
@@ -21,6 +23,10 @@ function toProspect(row: Record<string, unknown>): ProspectRow {
     emailConfidence: String(row.email_confidence ?? "guessed"),
     status: String(row.status ?? "new"),
     doNotContact: Boolean(row.do_not_contact),
+    // Kept in notes rather than its own column so adding segments never needs a
+    // migration. They are a product decision that will change more often than
+    // the schema should.
+    segment: String((row.notes as Record<string, unknown> | null)?.segment ?? "flippers"),
   };
 }
 
@@ -146,6 +152,7 @@ export interface ProspectInput {
   personRole?: string;
   email?: string;
   emailConfidence?: string;
+  segment?: string;
 }
 
 /**
@@ -171,6 +178,7 @@ export async function upsertProspects(
     person_role: input.personRole ?? null,
     email: input.email?.toLowerCase() ?? null,
     email_confidence: input.emailConfidence ?? "guessed",
+    notes: { segment: input.segment ?? "flippers" },
   }));
 
   const { data, error } = await client

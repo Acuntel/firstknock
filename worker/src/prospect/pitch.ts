@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateJson, type MeteredTenant } from "../ai/client";
-import { statsSentence, type MarketStats } from "./market-stats";
+import { statsSentence, type MarketStats, type SegmentStats } from "./market-stats";
+import type { BuyerSegment } from "./buyers";
 
 export interface Prospect {
   id: string;
@@ -55,16 +56,23 @@ const SYSTEM = [
   "- No hype adjectives: no 'exciting', 'incredible', 'game changing', 'revolutionary', 'unlock'.",
   "- Subject under 60 characters, lower key than a marketing line, no colon stacking.",
   "- Plain sentences an operator would actually write. Two sentences maximum in the hook.",
+  "- Do not make the offer or describe the service. The email does that after you.",
+  "- Write as one person, not a company. Never 'we'.",
 ].join("\n");
 
-function prompt(prospect: Prospect, stats: MarketStats): string {
+function prompt(prospect: Prospect, stats: SegmentStats, segment: BuyerSegment): string {
   const known = [
     `Company: ${prospect.company}`,
+    `What they do: ${segment.label}`,
     prospect.personName ? `Person: ${prospect.personName}` : null,
     prospect.personRole ? `Their role: ${prospect.personRole}` : null,
     prospect.city ? `Their city: ${prospect.city}` : null,
     prospect.website ? `Their website: ${prospect.website}` : null,
     `Market being offered: ${stats.county}`,
+    `Why this data is worth money to them: ${segment.why}`,
+    stats.examples.length > 0
+      ? `Real citations from that county, exactly as the city worded them: ${stats.examples.join(" / ")}`
+      : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -74,10 +82,40 @@ function prompt(prospect: Prospect, stats: MarketStats): string {
     "",
     known,
     "",
-    "The email offers them a daily list of distressed and in play properties in",
-    "their county, scored and with owner contact details where the county",
-    "publishes them. Do not describe the size of that list, that comes later.",
+    "The email offers them the properties in their county that a city has just",
+    "cited for the kind of work they do, with the owner's details where the",
+    "county publishes them.",
+    "",
+    "Be specific to their trade. A subject that would suit any contractor in any",
+    "city is a failure: it is what every lead vendor sends. Do not state any",
+    "number, those are inserted after you.",
   ].join("\n");
+}
+
+/**
+ * The line that makes this their email rather than anyone's.
+ *
+ * A county total is true and generic. The count of citations that are this
+ * trade's own work is what a landscaper or a hauler actually reacts to, and it
+ * is the sentence the whole segment taxonomy exists to produce.
+ */
+function segmentLine(stats: SegmentStats | MarketStats): string {
+  const segmented = stats as SegmentStats;
+  if (!segmented.segmentLabel || segmented.segmentCount === undefined) {
+    return `I track ${stats.county} and pull the public records that say a property` +
+      " is in trouble or about to move. Right now:";
+  }
+
+  if (segmented.segmentCount === 0) {
+    return `I track ${stats.county} and pull the public records the city files` +
+      " against a property. Right now:";
+  }
+
+  return (
+    `I track what ${stats.county} cites properties for. Of the records I hold,` +
+    ` ${segmented.segmentCount.toLocaleString()} are the kind of work you do, and every one` +
+    " is an owner the city has already told to fix it."
+  );
 }
 
 /**
@@ -90,15 +128,14 @@ function prompt(prospect: Prospect, stats: MarketStats): string {
  */
 export function assemblePitch(
   prospect: Prospect,
-  stats: MarketStats,
+  stats: SegmentStats | MarketStats,
   opening: PitchOpening,
   sender: { name: string; email: string; postalAddress: string },
 ): string {
   const paragraphs = [
     prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
     opening.hook,
-    `I track ${stats.county} and pull the public records that say a property is in` +
-      " trouble or about to move. Right now:",
+    segmentLine(stats),
     statsSentence(stats),
     "Each one is scored, deduplicated, and delivered every morning to your phone or" +
       " inbox. You would get the address, what happened, when, and the owner's" +
@@ -154,14 +191,15 @@ export async function draftPitch(
   db: SupabaseClient,
   tenant: MeteredTenant,
   prospect: Prospect,
-  stats: MarketStats,
+  stats: SegmentStats,
+  segment: BuyerSegment,
   now: Date,
 ): Promise<PitchOpening> {
   const { value } = await generateJson<PitchOpening>(db, {
     tenant,
     op: "prospect_pitch",
     system: SYSTEM,
-    prompt: prompt(prospect, stats),
+    prompt: prompt(prospect, stats, segment),
     schema: SCHEMA as unknown as Record<string, unknown>,
     maxTokens: 400,
     now,
