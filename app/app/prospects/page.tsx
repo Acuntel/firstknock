@@ -39,7 +39,7 @@ export default async function ProspectsPage({
   if (!(await isOperator())) {
     return (
       <Shell tenant={tenant} current="/prospects" fixtureMode={await isFixtureMode()}>
-        <h1 className="mb-3 text-xl font-semibold">Prospects</h1>
+        <h1 className="mb-3 text-2xl font-semibold">Companies</h1>
         <p className="text-sm text-muted">
           This is the list of companies FirstKnock sells to, so it is only visible
           to whoever runs it. Add your address to OPERATOR_EMAILS and sign in.
@@ -61,10 +61,17 @@ export default async function ProspectsPage({
 
   return (
     <Shell tenant={tenant} current="/prospects" fixtureMode={await isFixtureMode()}>
-      <h1 className="mb-1 text-xl font-semibold">Prospects</h1>
-      <p className="mb-6 text-sm text-muted">
-        {rows.length} companies found, {ready} ready to write to.
-      </p>
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Companies</h1>
+          <p className="mt-1 text-sm text-muted">
+            Everyone found so far, and who is ready to be written to.
+          </p>
+        </div>
+        <p className="tnum text-sm text-muted">
+          <span className="font-semibold text-ink">{ready}</span> of {rows.length} ready
+        </p>
+      </div>
 
       <div className="mb-8">
         <DraftButton ready={ready} />
@@ -78,13 +85,13 @@ export default async function ProspectsPage({
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-line bg-surface px-4 py-3 text-sm text-muted">
+        <p className="card px-5 py-4 text-sm text-muted">
           None yet. Run pnpm --filter worker prospect import to find some.
         </p>
       ) : (
-        <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+        <ul className="card divide-y divide-line overflow-hidden">
           {rows.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
+            <li key={row.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
               <span className="w-56 shrink-0 text-sm font-medium">{row.company}</span>
               <span className="w-64 shrink-0 text-sm text-muted">{row.email ?? "no address"}</span>
               <span className="w-40 shrink-0 text-sm text-muted">

@@ -20,7 +20,7 @@ export function DraftButton({ ready }: { ready: number }) {
             setResult(await draftEmails(count));
           })
         }
-        className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        className="btn-primary px-4 py-2 text-sm"
       >
         {pending
           ? "Writing drafts, this takes a few seconds each"
@@ -35,7 +35,7 @@ export function DraftButton({ ready }: { ready: number }) {
       </p>
 
       {result ? (
-        <div className="mt-4 rounded-lg border border-line bg-surface px-4 py-3 text-sm">
+        <div className="card mt-4 px-5 py-4 text-sm">
           {result.error ? (
             <p className="text-ink">{result.error}</p>
           ) : (

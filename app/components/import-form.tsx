@@ -26,8 +26,8 @@ export function ImportForm({ markets, segments }: { markets: Option[]; segments:
   const added = result?.outcomes.filter((o) => o.status === "added").length ?? 0;
 
   return (
-    <div className="rounded-lg border border-line bg-surface p-4">
-      <h2 className="text-sm font-medium">Add companies</h2>
+    <div className="card p-5">
+      <h2 className="text-[15px] font-semibold">Add companies</h2>
       <p className="mt-1 text-xs text-muted">
         Paste their websites, one per line or straight out of a search results
         page. Anything that is not a web address is ignored.
@@ -38,7 +38,7 @@ export function ImportForm({ markets, segments }: { markets: Option[]; segments:
         onChange={(event) => setText(event.target.value)}
         rows={5}
         placeholder={"https://example-roofing.com\nanother-contractor.com"}
-        className="mt-3 w-full rounded-lg border border-line bg-bg px-3 py-2 font-mono text-xs"
+        className="mt-3 w-full rounded-xl border border-line bg-canvas px-3 py-2.5 font-mono text-xs"
       />
 
       <div className="mt-3 flex flex-wrap gap-3">
@@ -47,7 +47,7 @@ export function ImportForm({ markets, segments }: { markets: Option[]; segments:
           <select
             value={fips}
             onChange={(event) => setFips(event.target.value)}
-            className="ml-2 rounded-lg border border-line bg-bg px-2 py-1 text-sm text-ink"
+            className="ml-2 rounded-lg border border-line bg-canvas px-2 py-1.5 text-sm text-ink"
           >
             {markets.map((option) => (
               <option key={option.value} value={option.value}>
@@ -62,7 +62,7 @@ export function ImportForm({ markets, segments }: { markets: Option[]; segments:
           <select
             value={segment}
             onChange={(event) => setSegment(event.target.value)}
-            className="ml-2 rounded-lg border border-line bg-bg px-2 py-1 text-sm text-ink"
+            className="ml-2 rounded-lg border border-line bg-canvas px-2 py-1.5 text-sm text-ink"
           >
             {segments.map((option) => (
               <option key={option.value} value={option.value}>
@@ -82,7 +82,7 @@ export function ImportForm({ markets, segments }: { markets: Option[]; segments:
             setResult(await importProspects(text, fips, segment));
           })
         }
-        className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        className="btn-primary mt-3 px-4 py-2 text-sm"
       >
         {pending ? "Reading their sites, this takes a minute or two" : "Find their contact details"}
       </button>
