@@ -29,7 +29,7 @@ const SCHEMA = {
   additionalProperties: false,
   required: ["subject", "hook"],
   properties: {
-    subject: { type: "string", maxLength: 60 },
+    subject: { type: "string", maxLength: 50 },
     hook: { type: "string", maxLength: 320 },
   },
 } as const;
@@ -54,7 +54,12 @@ const SYSTEM = [
   "- Never state a number about the data. Those are inserted after you and you will get them wrong.",
   "- No em dashes, no en dashes, no exclamation marks, no 'Dear', no 'I hope this finds you'.",
   "- No hype adjectives: no 'exciting', 'incredible', 'game changing', 'revolutionary', 'unlock'.",
-  "- Subject under 60 characters, lower key than a marketing line, no colon stacking.",
+  "- Subject under 50 characters. Phone mail apps cut off around there, and a",
+  "  subject that gets truncated reads as careless.",
+  "- Write the subject as a person would type it to someone they know: plain and",
+  "  specific, no Title Case, no colon stacking, nothing that sells.",
+  "- Sentence case, but keep place names capitalised. 'grass citations in Buffalo'",
+  "  is right, 'detroit roof citations' is not.",
   "- Never put an ordinance number, section number or code in the subject.",
   "  'SPCC 27-43' reads as spam to the one person who would recognise the word after it.",
   "- Name the city they work in, not the county. A Buffalo contractor thinks Buffalo, not Erie.",
@@ -226,7 +231,15 @@ export async function draftPitch(
       if (/[—–]/.test(text)) throw new Error("Model used a dash it was told not to");
       if (text.includes("!")) throw new Error("Model used an exclamation mark");
       if (/\bDear\b/i.test(text)) throw new Error("Model opened with Dear");
+      // The schema asks for 50 so the model aims there. The check allows 60,
+      // because failing the whole draft over three characters loses a prospect
+      // to save a subject from being slightly clipped on a phone.
       if (value.subject.length > 60) throw new Error("Subject too long");
+      // A lowercased place name reads as careless, and the model reaches for it
+      // when told to avoid Title Case.
+      if (/\b(detroit|buffalo|syracuse|milwaukee|erie|wayne|onondaga)\b/.test(value.subject)) {
+        throw new Error("Model lowercased a place name in the subject");
+      }
       // Enforced rather than requested. An ordinance number in a subject line
       // is the single thing that makes this look like a phishing notice.
       if (/\b(sec|section)\.?\s*\d|\b[A-Z]{3,}\s*\d{2,}|\b\d{2,}-\d{2,}\b/.test(value.subject)) {
