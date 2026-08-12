@@ -136,7 +136,18 @@ export interface SegmentStats extends MarketStats {
  * "Trash & Debris Rental Registry", which is two unrelated fields stuck
  * together and reads as gibberish to the one person who would recognise it.
  */
-const CITATION_FIELDS = ["violation", "complaint_type_name", "case_type", "description"];
+const CITATION_FIELDS = [
+  "violation",
+  "complaint_type_name",
+  "case_type",
+  "description",
+  // Permits describe the work rather than a breach, and Detroit's whole feed is
+  // permits. Without these a roofer matched nothing in Detroit, because the
+  // keyword test ran against an empty string and quietly failed.
+  "permit_type",
+  "bld_permit_type",
+  "current_use_type",
+];
 
 /** Everything a citation says, for keyword matching where more text is better. */
 export function citationText(raw: unknown): string {

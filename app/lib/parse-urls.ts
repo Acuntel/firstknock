@@ -20,6 +20,7 @@ const DIRECTORIES = [
   "indeed.", "glassdoor.", "chamberofcommerce.", "expertise.", "birdeye.",
   "homeguide.", "greenpal.", "yourgreenpal.", "realestatebees.", "listwithclever.",
   "propertyvendors.", "homeinvestorszone.", "apify.", "wikipedia.", "reddit.",
+  "plowzandmowz.", "mylawnmowingservice.", "goloadup.", "lawnlove.", "taskrabbit.",
   "google.", "bing.", "duckduckgo.", "amazon.", "craigslist.",
 ];
 
@@ -36,6 +37,8 @@ const FRANCHISES = [
   "servpro", "puroclean", "pauldavis", "rainbowrestores", "911restoration",
   "servicemaster", "steamatic", "belfor", "chemdry", "stanleysteemer",
   "junk-king", "junkking", "jdogjunkremoval", "collegehunkshaulingjunk", "1800gotjunk",
+  "junkluggers", "jiffyjunk", "twomenandajunktruck", "restoration1", "rytechinc",
+  "modernistic", "water-damage.org",
   "spring-green", "springgreen", "lawnstarter", "trugreen", "weedman",
   "lawndoctor", "mosquitojoe", "terminix", "orkin", "rentokil", "aptive",
   "mrhandyman", "aireserv", "aire-serv", "mollymaid", "roto-rooter", "rotorooter",

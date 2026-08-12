@@ -3,7 +3,7 @@ import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mai
 import { citationLabel, statsSentence, type MarketStats } from "../src/prospect/market-stats";
 import { assemblePitch, wrap, type Prospect } from "../src/prospect/pitch";
 import { nameFromMailbox, nameMatchesMailbox } from "../src/prospect/store";
-import { scrapeCompanyName } from "../src/prospect/scraper";
+import { extractEmails, scrapeCompanyName } from "../src/prospect/scraper";
 
 const SENDER = {
   name: "Ben Shpritz",
@@ -298,5 +298,26 @@ describe("reading a first name off the mailbox", () => {
     expect(nameFromMailbox("sales@example.com")).toBeNull();
     expect(nameFromMailbox("mm@example.com")).toBeNull();
     expect(nameFromMailbox(null)).toBeNull();
+  });
+});
+
+describe("addresses pulled out of a page", () => {
+  it("strips percent encoding off a mailto link", () => {
+    // "mailto:%20name@host" leaves the %20 attached, and %20syracuselawn@gmail
+    // was written to the database before this.
+    const html = '<a href="mailto:%20hello@example.com">Email us</a>';
+    expect(extractEmails(html, "example.com")[0]?.email).toBe("hello@example.com");
+  });
+
+  it("prefers an address on the company's own domain", () => {
+    const html = "someone@gmail.com and office@example.com";
+    const found = extractEmails(html, "example.com");
+    expect(found[0]?.email).toBe("office@example.com");
+    expect(found[0]?.onDomain).toBe(true);
+  });
+
+  it("ignores addresses belonging to neither them nor a free provider", () => {
+    // Their web designer, a directory, or a partner. Not a person who works there.
+    expect(extractEmails("hi@somewebagency.io", "example.com")).toHaveLength(0);
   });
 });

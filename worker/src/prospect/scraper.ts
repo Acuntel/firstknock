@@ -78,7 +78,16 @@ export function extractEmails(html: string, domain: string): ScrapedContact[] {
   const found = new Map<string, ScrapedContact>();
 
   for (const match of html.match(EMAIL_PATTERN) ?? []) {
-    const email = match.toLowerCase();
+    // mailto: links carry percent encoding, and a "mailto:%20name@host" leaves
+    // the %20 stuck to the front of the address. Decoding first, then trimming,
+    // is what stops "%20syracuselawn@gmail.com" reaching the database.
+    let decoded = match;
+    try {
+      decoded = decodeURIComponent(match);
+    } catch {
+      // Malformed encoding, so take it as written.
+    }
+    const email = decoded.trim().replace(/^[^a-z0-9]+/i, "").toLowerCase();
     const [local, host] = email.split("@");
     if (!local || !host) continue;
     if (JUNK_LOCAL_PARTS.test(local)) continue;
