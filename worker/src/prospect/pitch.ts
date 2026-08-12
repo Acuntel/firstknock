@@ -140,8 +140,8 @@ export function assemblePitch(
     "Each one is scored, deduplicated, and delivered every morning to your phone or" +
       " inbox. You would get the address, what happened, when, and the owner's" +
       " mailing details where the county publishes them.",
-    "If that is useful I will send you a week of it at no cost so you can check the" +
-      " addresses against what you already know. If it is not, no follow up.",
+    "If that is worth having, reply and we can set up a short call to work out" +
+      " what it is worth to you. If not, no follow up.",
     `${sender.name}\n${sender.email}`,
     `If this is not relevant, reply no and I will not email you again.\n${sender.postalAddress}`,
   ];
@@ -235,45 +235,68 @@ export interface LeadSample {
 }
 
 /**
- * A pitch built around one real property.
+ * Strips the house number off an address.
  *
- * The county wide version asks a contractor to believe a number. This one hands
- * them an address they can drive past, which is a different kind of argument
- * entirely, and it is the reason to lead with a sample rather than a total.
+ * "418 Merriman Ave" becomes "Merriman Ave". Enough to prove the record is real
+ * and specific, not enough to go and knock on. The whole email turns on the
+ * reader believing there is something behind it, and a street name does that
+ * without handing over the one thing they are being asked to pay for.
+ */
+export function streetOnly(address: string): string {
+  return address.replace(/^\s*\d+[a-z]?(\s*[-\/]\s*\d+[a-z]?)?\s+/i, "").trim() || address;
+}
+
+/**
+ * A pitch built around one real property, without giving it away.
  *
- * One property, not the list. The sample is proof the data is real; the rest is
- * what they are being asked to pay for. Sending the whole list in the first
- * email answers the question before they have agreed to buy it.
+ * The earlier version named the full address and offered a free week of the
+ * list. That is a sample big enough to be the product: a hauler could work the
+ * free week and never come back. This says what was cited, on which street, and
+ * how many more there are, then asks for a conversation about price.
+ *
+ * Proof, not inventory. The specific thing being sold stays behind the call.
  */
 export function assembleLeadPitch(
   prospect: Prospect,
   sample: LeadSample,
   stats: SegmentStats,
   opening: PitchOpening,
-  sender: { name: string; email: string; postalAddress: string },
+  sender: {
+    name: string;
+    email: string;
+    postalAddress: string;
+    phone?: string;
+  },
   now: Date,
 ): string {
   const days = Math.max(0, Math.round((now.getTime() - sample.occurredAt.getTime()) / 86_400_000));
-  const when =
-    days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
-  const where = sample.city ? `${sample.address}, ${sample.city}` : sample.address;
+  const when = days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+  const street = streetOnly(sample.address);
+  const where = sample.city ? `${street} in ${sample.city}` : street;
 
   const others = Math.max(0, stats.segmentCount - 1);
+
+  const reply = sender.phone
+    ? `Reply to this or call me on ${sender.phone} and we can work out what the` +
+      " list is worth to you."
+    : "Reply to this and we can set up a short call to work out what the list is" +
+      " worth to you.";
 
   const paragraphs = [
     prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
     opening.hook,
-    `One from ${when}: ${where}, cited for ${sample.citation.toLowerCase()}.` +
-      (sample.hasOwner ? " The county publishes the owner's name and mailing address for it." : ""),
+    `One from ${when}: a property on ${where}, cited for ${sample.citation.toLowerCase()}.` +
+      (sample.hasOwner ? " The county publishes the owner's name and mailing address with it." : ""),
     others > 0
-      ? `That is one of ${others.toLocaleString()} more in ${stats.county} that are the same kind` +
-        " of work, and the owner of every one has been told by the city to deal with it."
+      ? `There are ${others.toLocaleString()} more in ${stats.county} that are the same` +
+        " kind of work, and the owner of every one has been told by the city to deal" +
+        " with it."
       : `I track every citation ${stats.county} files.`,
-    "I send the day's list every morning, with the address, what was cited, when," +
-      " and the owner's details where the county publishes them.",
-    "Drive past that address. If it is what I say it is, I will send you a week of" +
-      " the rest at no cost. If not, no follow up.",
-    `${sender.name}\n${sender.email}`,
+    "I put the day's list together every morning: the address, what was cited," +
+      " when, and the owner's details where the county publishes them. Nobody else" +
+      " in your market is working it.",
+    reply,
+    `${sender.name}\n${sender.email}${sender.phone ? `\n${sender.phone}` : ""}`,
     `If this is not relevant, reply no and I will not email you again.\n${sender.postalAddress}`,
   ];
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mail-draft";
 import { citationLabel, statsSentence, type MarketStats } from "../src/prospect/market-stats";
-import { assemblePitch, wrap, type Prospect } from "../src/prospect/pitch";
+import { assembleLeadPitch, assemblePitch, streetOnly, wrap, type Prospect } from "../src/prospect/pitch";
 import { nameFromMailbox, nameMatchesMailbox } from "../src/prospect/store";
 import { extractEmails, scrapeCompanyName } from "../src/prospect/scraper";
 
@@ -319,5 +319,61 @@ describe("addresses pulled out of a page", () => {
   it("ignores addresses belonging to neither them nor a free provider", () => {
     // Their web designer, a directory, or a partner. Not a person who works there.
     expect(extractEmails("hi@somewebagency.io", "example.com")).toHaveLength(0);
+  });
+});
+
+describe("what the lead email gives away", () => {
+  const sample = {
+    address: "418 Merriman Ave",
+    city: "SYRACUSE",
+    citation: "Accumulation of Rubbish or Garbage",
+    occurredAt: new Date("2026-08-10T00:00:00.000Z"),
+    hasOwner: true,
+  };
+  const now = new Date("2026-08-12T00:00:00.000Z");
+  const body = assembleLeadPitch(
+    PROSPECT,
+    sample,
+    { ...MILWAUKEE, county: "Onondaga, NY", segmentCount: 87, segmentLabel: "Junk removal and hauling", examples: [] },
+    { subject: "s", hook: "h" },
+    { ...SENDER, phone: "555 0100" },
+    now,
+  );
+
+  it("names the street but never the house number", () => {
+    // Proof, not inventory. A street name says the record is real; the number
+    // is the thing they are being asked to pay for.
+    expect(body).toContain("Merriman Ave");
+    expect(body).not.toContain("418");
+  });
+
+  it("strips the number off any shape of address", () => {
+    expect(streetOnly("418 Merriman Ave")).toBe("Merriman Ave");
+    expect(streetOnly("6516/6518 N 107TH ST")).toBe("N 107TH ST");
+    expect(streetOnly("77 POPLAR")).toBe("POPLAR");
+    // Nothing to strip, so it is left alone rather than emptied.
+    expect(streetOnly("BROADWAY")).toBe("BROADWAY");
+  });
+
+  it("offers a conversation about price, not free leads", () => {
+    expect(body).not.toMatch(/no cost|free|at no charge/i);
+    expect(body).toMatch(/worth to you/);
+  });
+
+  it("asks for a call when a number is set", () => {
+    expect(body).toContain("call me on 555 0100");
+  });
+
+  it("asks for a reply when no number is set", () => {
+    const noPhone = assembleLeadPitch(
+      PROSPECT,
+      sample,
+      { ...MILWAUKEE, segmentCount: 5, segmentLabel: "Junk removal and hauling", examples: [] },
+      { subject: "s", hook: "h" },
+      SENDER,
+      now,
+    );
+    expect(noPhone).toMatch(/set up a short call/);
+    expect(noPhone).not.toContain("call me on");
   });
 });

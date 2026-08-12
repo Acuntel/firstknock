@@ -27,7 +27,7 @@ function sender() {
   const email = process.env.MAIL_USER ?? process.env.GMAIL_USER;
   const postalAddress = process.env.PROSPECT_POSTAL_ADDRESS;
   if (!name || !email || !postalAddress) return null;
-  return { name, email, postalAddress };
+  return { name, email, postalAddress, phone: process.env.PROSPECT_PHONE || undefined };
 }
 
 async function showStats(): Promise<void> {

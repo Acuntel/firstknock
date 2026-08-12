@@ -21,7 +21,9 @@ function sender() {
   const email = process.env.MAIL_USER ?? process.env.GMAIL_USER;
   const postalAddress = process.env.PROSPECT_POSTAL_ADDRESS;
   if (!name || !email || !postalAddress) return null;
-  return { name, email, postalAddress };
+  // Optional. With a number the email says call me, without it, reply and we
+  // will set up a call.
+  return { name, email, postalAddress, phone: process.env.PROSPECT_PHONE || undefined };
 }
 
 /**
