@@ -3,6 +3,7 @@ import type { DesignPartnerTenant } from "@firstknock/worker/tenants";
 import { allTenants, href } from "@/lib/tenant";
 
 const NAV = [
+  { path: "/daily", label: "Daily" },
   { path: "/today", label: "Today" },
   { path: "/board", label: "Board" },
   { path: "/sources", label: "Sources" },

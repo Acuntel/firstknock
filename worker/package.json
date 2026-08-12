@@ -28,7 +28,8 @@
     "./prospect/market-stats": "./src/prospect/market-stats.ts",
     "./prospect/pitch": "./src/prospect/pitch.ts",
     "./prospect/store": "./src/prospect/store.ts",
-    "./prospect/import": "./src/prospect/import.ts"
+    "./prospect/import": "./src/prospect/import.ts",
+    "./prospect/match": "./src/prospect/match.ts"
   },
   "scripts": {
     "once": "tsx src/run-once.ts",

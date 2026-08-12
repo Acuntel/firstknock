@@ -6,9 +6,9 @@ import { market as findMarket, segment as findSegment } from "@firstknock/worker
 import { importSites } from "@firstknock/worker/prospect/import";
 import { parseUrls } from "@/lib/parse-urls";
 import { appendDraft, mailboxCredentials } from "@firstknock/worker/prospect/mail-draft";
-import { segmentStats } from "@firstknock/worker/prospect/market-stats";
-import { assemblePitch, draftPitch } from "@firstknock/worker/prospect/pitch";
-import { draftableProspects, markDrafted, suppress } from "@firstknock/worker/prospect/store";
+import { citationLabel, segmentStats } from "@firstknock/worker/prospect/market-stats";
+import { assembleLeadPitch, assemblePitch, draftPitch } from "@firstknock/worker/prospect/pitch";
+import { draftableProspects, markDrafted, nameFromMailbox, suppress } from "@firstknock/worker/prospect/store";
 
 export interface DraftResult {
   drafted: number;
@@ -185,4 +185,108 @@ export async function importProspects(
     error: null,
     notAttempted: urls.length - batch.length,
   };
+}
+
+export interface MailResult {
+  ok: boolean;
+  subject?: string;
+  message: string;
+}
+
+/**
+ * Drafts an email to one company about one specific property.
+ *
+ * The per market version asks a contractor to believe a number. This hands them
+ * an address they can drive past, which is a different argument, and it is why
+ * the button lives next to the lead rather than next to the company.
+ */
+export async function mailAboutLead(prospectId: string, leadId: string): Promise<MailResult> {
+  if (!(await isOperator())) return { ok: false, message: "Not signed in as an operator." };
+
+  const credentials = mailboxCredentials();
+  const from = sender();
+  if (!credentials || !from) {
+    return { ok: false, message: "Mailbox or sender details are not configured." };
+  }
+
+  const client = operatorClient();
+  const now = new Date();
+
+  const { data: prospectRow } = await client
+    .from("prospects")
+    .select("*")
+    .eq("id", prospectId)
+    .maybeSingle();
+
+  if (!prospectRow) return { ok: false, message: "That company is no longer on the list." };
+  if (prospectRow.do_not_contact) {
+    return { ok: false, message: "That company asked not to be contacted." };
+  }
+
+  const { data: leadRow } = await client
+    .from("leads")
+    .select("id, events(*)")
+    .eq("id", leadId)
+    .maybeSingle();
+
+  if (!leadRow) return { ok: false, message: "That lead has gone." };
+
+  const raw = leadRow.events as unknown as Record<string, unknown>;
+  const segmentId = String((prospectRow.notes as { segment?: string } | null)?.segment ?? "flippers");
+
+  try {
+    const buyer = findSegment(segmentId);
+    const stats = await segmentStats(client, String(prospectRow.fips), buyer, now);
+
+    const prospect = {
+      id: String(prospectRow.id),
+      company: String(prospectRow.company),
+      website: (prospectRow.website as string) ?? null,
+      city: (prospectRow.city as string) ?? null,
+      personName: nameFromMailbox(String(prospectRow.email)),
+      personRole: null,
+      email: String(prospectRow.email),
+    };
+
+    const opening = await draftPitch(client, await tenantFor(client), prospect, stats, buyer, now);
+
+    const body = assembleLeadPitch(
+      prospect,
+      {
+        address: String(raw.property_address ?? ""),
+        city: (raw.property_city as string) ?? null,
+        citation: citationLabel(raw.raw) || buyer.label,
+        occurredAt: new Date(String(raw.occurred_at)),
+        hasOwner: Array.isArray(raw.parties) && raw.parties.length > 0,
+      },
+      stats,
+      opening,
+      from,
+      now,
+    );
+
+    await appendDraft(
+      credentials,
+      {
+        to: prospect.email,
+        subject: opening.subject,
+        body,
+        fromName: from.name,
+        fromEmail: from.email,
+      },
+      now,
+    );
+
+    await markDrafted(client, prospect.id, now);
+    revalidatePath("/daily");
+    return { ok: true, subject: opening.subject, message: "Draft is in your mailbox." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/** Metering needs a tenant to bill against. Any will do, the cap is global. */
+async function tenantFor(client: ReturnType<typeof operatorClient>) {
+  const { data } = await client.from("tenants").select("id, plan").limit(1).single();
+  return { id: String(data?.id), plan: String(data?.plan ?? "solo") };
 }
