@@ -149,10 +149,32 @@ const CITATION_FIELDS = [
   "current_use_type",
 ];
 
+/**
+ * Condition flags some counties publish instead of describing the problem.
+ *
+ * Detroit's permit feed says only "Alteration", which names no trade, but it
+ * also carries is_vacant, is_open_to_elements and is_missing_portions_of_
+ * building. A permit on a vacant house that is open to the weather is a
+ * board up job and a flipper's lead, and reading only the free text threw all
+ * of that away.
+ */
+const CONDITION_FLAGS: Record<string, string> = {
+  is_vacant: "vacant",
+  is_open_to_elements: "open to the elements exterior",
+  is_missing_portions_of_building: "structural missing portions",
+  is_fire_damaged: "fire damage",
+};
+
 /** Everything a citation says, for keyword matching where more text is better. */
 export function citationText(raw: unknown): string {
   const record = (raw ?? {}) as Record<string, unknown>;
-  return CITATION_FIELDS.map((field) => String(record[field] ?? "")).join(" ").trim();
+  const written = CITATION_FIELDS.map((field) => String(record[field] ?? ""));
+
+  const conditions = Object.entries(CONDITION_FLAGS)
+    .filter(([field]) => String(record[field] ?? "").toLowerCase() === "yes")
+    .map(([, word]) => word);
+
+  return [...written, ...conditions].join(" ").trim();
 }
 
 /**
