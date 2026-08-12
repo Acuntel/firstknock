@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mail-draft";
 import { statsSentence, type MarketStats } from "../src/prospect/market-stats";
 import { assemblePitch, wrap, type Prospect } from "../src/prospect/pitch";
+import { nameMatchesMailbox } from "../src/prospect/store";
+import { scrapeCompanyName } from "../src/prospect/scraper";
 
 const SENDER = {
   name: "Ben Shpritz",
@@ -198,5 +200,51 @@ describe("plain text wrapping", () => {
 
   it("keeps deliberate line breaks, like the signature", () => {
     expect(wrap("Ben Shpritz\nben@example.com")).toBe("Ben Shpritz\nben@example.com");
+  });
+});
+
+describe("who a scraped address may be greeted as", () => {
+  it("never greets a role mailbox by a researched name", () => {
+    // info@ belongs to whoever picks it up, so "Hi Dana" there is a guess the
+    // reader can see through immediately.
+    expect(nameMatchesMailbox("Dana Whitfield", "info@example.com")).toBe(false);
+    expect(nameMatchesMailbox("Dana Whitfield", "sales@example.com")).toBe(false);
+    expect(nameMatchesMailbox("Dana Whitfield", "contact@example.com")).toBe(false);
+  });
+
+  it("allows a personal mailbox that actually contains the name", () => {
+    expect(nameMatchesMailbox("Dana Whitfield", "dana@example.com")).toBe(true);
+    expect(nameMatchesMailbox("Dana Whitfield", "whitfield@example.com")).toBe(true);
+    expect(nameMatchesMailbox("Dana Whitfield", "dana.whitfield@example.com")).toBe(true);
+  });
+
+  it("refuses a personal mailbox belonging to somebody else", () => {
+    // jsmith@ greeted "Hi Dana" is the exact failure the rule exists to stop.
+    expect(nameMatchesMailbox("Dana Whitfield", "jsmith@example.com")).toBe(false);
+  });
+});
+
+describe("reading a company name off a page", () => {
+  const title = (t: string) => `<html><head><title>${t}</title></head><body></body></html>`;
+
+  it("decodes entities rather than shipping them to a prospect", () => {
+    expect(scrapeCompanyName(title("Grabber &amp; Sons"))).toBe("Grabber & Sons");
+  });
+
+  it("rejects a page name that is not a business name", () => {
+    // An email addressed to a company called Home is worse than one addressed
+    // to nobody, and the importer falls back to the domain.
+    expect(scrapeCompanyName(title("Home"))).toBeNull();
+    expect(scrapeCompanyName(title("Welcome"))).toBeNull();
+  });
+
+  it("rejects a tagline masquerading as a name", () => {
+    expect(
+      scrapeCompanyName(title("The best landscaping and snow removal in all of Western New York")),
+    ).toBeNull();
+  });
+
+  it("keeps the name and drops the tagline after it", () => {
+    expect(scrapeCompanyName(title("716 Lawn Care | Best Landscaping in Buffalo"))).toBe("716 Lawn Care");
   });
 });

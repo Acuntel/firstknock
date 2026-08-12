@@ -27,12 +27,24 @@ function toProspect(row: Record<string, unknown>): ProspectRow {
 /**
  * Prospects that may be written to right now.
  *
- * Four conditions, and all of them have to hold. A verified address, because a
- * guess that bounces costs the sending domain more than the lead is worth. A
- * named person, because addressing a generic inbox by a researched name reads
- * worse than not writing at all. Not already drafted, because one address is
- * only ever written to once in a campaign. Not suppressed, because someone who
- * said no said it permanently.
+ * An address that is either verified outright or published by the company on
+ * its own domain, because a guess that bounces costs the sending domain more
+ * than the lead is worth. See confidenceFrom in import.ts for why the middle
+ * tier exists: residential internet blocks the port the strict check needs. Not already drafted, because one address is only
+ * ever written to once in a campaign. Not suppressed, because someone who said
+ * no said it permanently.
+ *
+ * A named person is deliberately NOT required, which departs from
+ * EMAIL_BOT_SAUCE.md, and the departure is evidence based. Scraping real
+ * contractor sites in these four metros turns up an address on roughly one site
+ * in four and a named person on almost none: small trades use contact forms and
+ * an info@ mailbox, and that mailbox is usually the owner's phone.
+ *
+ * The rule in the doc exists to stop "Hi Mike" landing in John's inbox, and
+ * that hazard is real. But the fix for an unknown name is to not use one:
+ * assemblePitch greets an unnamed prospect with "Hi," which is safe. What is
+ * never allowed is a name we are not sure belongs to the mailbox, and
+ * nameMatchesMailbox below is what enforces that.
  */
 export async function draftableProspects(
   client: SupabaseClient,
@@ -42,18 +54,48 @@ export async function draftableProspects(
   let query = client
     .from("prospects")
     .select("*")
-    .eq("email_confidence", "verified")
+    .in("email_confidence", ["verified", "published"])
     .eq("do_not_contact", false)
     .eq("status", "new")
     .not("email", "is", null)
-    .not("person_name", "is", null)
     .limit(limit);
 
   if (fips) query = query.eq("fips", fips);
 
   const { data, error } = await query;
   if (error) throw new Error(`Failed to load prospects: ${error.message}`);
-  return (data ?? []).map((row) => toProspect(row as Record<string, unknown>));
+
+  // A name we cannot tie to the mailbox is dropped rather than the prospect,
+  // so the email still goes out addressed to nobody in particular instead of to
+  // the wrong person by name.
+  return (data ?? [])
+    .map((row) => toProspect(row as Record<string, unknown>))
+    .map((prospect) =>
+      prospect.personName && !nameMatchesMailbox(prospect.personName, prospect.email)
+        ? { ...prospect, personName: null }
+        : prospect,
+    );
+}
+
+/**
+ * Whether a researched name can safely be used to greet this mailbox.
+ *
+ * Shared and role mailboxes are fine to greet generically: info@ belongs to
+ * whoever picks it up, so "Hi," is honest. A personal mailbox is the dangerous
+ * case, because jsmith@ addressed "Hi Mike" tells the reader immediately that
+ * this was scraped and guessed at.
+ *
+ * So a personal looking mailbox has to actually contain part of the name.
+ */
+export function nameMatchesMailbox(name: string, email: string | null): boolean {
+  if (!email) return false;
+  const local = email.split("@")[0]?.toLowerCase() ?? "";
+
+  const ROLE_MAILBOXES = /^(info|contact|hello|hi|office|admin|sales|support|team|service|help|inquiries|estimates|dispatch|scheduling|bookings|mail)$/;
+  if (ROLE_MAILBOXES.test(local)) return false;
+
+  const parts = name.toLowerCase().split(/\s+/).filter((p) => p.length > 2);
+  return parts.some((part) => local.includes(part));
 }
 
 export async function markDrafted(

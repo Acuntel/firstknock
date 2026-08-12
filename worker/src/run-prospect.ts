@@ -5,6 +5,8 @@ import { appendDraft, mailboxCredentials, unknownHostHelp } from "./prospect/mai
 import { marketStats, statsSentence } from "./prospect/market-stats";
 import { assemblePitch, draftPitch } from "./prospect/pitch";
 import { draftableProspects, markDrafted, suppress } from "./prospect/store";
+import { importSites, type ImportTarget } from "./prospect/import";
+import { readFileSync } from "node:fs";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
 
@@ -15,6 +17,7 @@ loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
  *   pnpm --filter worker prospect draft 10         draft up to 10, then review them
  *   pnpm --filter worker prospect draft 10 36029   only the Buffalo market
  *   pnpm --filter worker prospect suppress a@b.com they asked to be left alone
+ *   pnpm --filter worker prospect import <file.json>  scrape, verify, store
  */
 const MARKETS = ["55079", "36067", "36029", "26163"];
 
@@ -127,6 +130,26 @@ async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
 
   if (command === "stats") return showStats();
+  if (command === "import") {
+    const file = rest[0] ?? "prospects.seed.json";
+    const targets = JSON.parse(readFileSync(file, "utf8")) as ImportTarget[];
+    const outcomes = await importSites(createWorkerClient(), targets);
+
+    const tally = new Map<string, number>();
+    for (const o of outcomes) tally.set(o.status, (tally.get(o.status) ?? 0) + 1);
+    process.stdout.write("\n");
+    for (const [status, n] of [...tally].sort((a, b) => b[1] - a[1])) {
+      process.stdout.write(`  ${String(n).padStart(3)}  ${status}\n`);
+    }
+    // Naming what was dropped and why, because a run that quietly returns three
+    // prospects from fourteen sites looks broken rather than normal.
+    process.stdout.write(
+      `\n${outcomes.filter((o) => o.status === "added").length} of ${outcomes.length} sites` +
+        ` produced a contactable prospect. Most small trades run on a contact\n` +
+`form rather than a published address, so this ratio is expected.\n`,
+    );
+    return;
+  }
   if (command === "draft") return draft(Number(rest[0] ?? 10), rest[1]);
   if (command === "suppress") {
     const email = rest[0];

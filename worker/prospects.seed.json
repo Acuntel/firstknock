@@ -1,0 +1,18 @@
+[
+  { "url": "https://syracusejunksquad.com", "fips": "36067", "city": "Syracuse", "state": "NY", "segment": "junk-removal" },
+  { "url": "https://expertclutter.com", "fips": "36067", "city": "Syracuse", "state": "NY", "segment": "junk-removal" },
+  { "url": "https://www.aaarousse.com", "fips": "36067", "city": "Syracuse", "state": "NY", "segment": "junk-removal" },
+
+  { "url": "https://716lawncare.com", "fips": "36029", "city": "Buffalo", "state": "NY", "segment": "landscaping" },
+  { "url": "https://buffalogreencompany.com", "fips": "36029", "city": "Buffalo", "state": "NY", "segment": "landscaping" },
+  { "url": "https://www.landscapingbuffalony.com", "fips": "36029", "city": "Buffalo", "state": "NY", "segment": "landscaping" },
+  { "url": "https://www.lukeslandscapingwny.com", "fips": "36029", "city": "Buffalo", "state": "NY", "segment": "landscaping" },
+  { "url": "https://www.freshcutwny.com", "fips": "36029", "city": "Buffalo", "state": "NY", "segment": "landscaping" },
+  { "url": "https://www.jdlandscapingny.com", "fips": "36029", "city": "Buffalo", "state": "NY", "segment": "landscaping" },
+  { "url": "https://www.grabberlandscape.com", "fips": "36029", "city": "Buffalo", "state": "NY", "segment": "landscaping" },
+
+  { "url": "https://propertyprepllc.com", "fips": "55079", "city": "Milwaukee", "state": "WI", "segment": "property-preservation" },
+  { "url": "https://metromilwaukeehomebuyer.com", "fips": "55079", "city": "Milwaukee", "state": "WI", "segment": "flippers" },
+  { "url": "http://house4cashgroup.com", "fips": "55079", "city": "Milwaukee", "state": "WI", "segment": "flippers" },
+  { "url": "https://cashhomebuyerswisconsin.com", "fips": "55079", "city": "Milwaukee", "state": "WI", "segment": "flippers" }
+]
