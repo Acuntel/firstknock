@@ -206,3 +206,56 @@ export async function recordDigest(
 
   if (error) throw new Error(`Failed to record digest: ${error.message}`);
 }
+
+/** One market's best leads, for the cross market view. */
+export interface MarketLeads {
+  tenantId: string;
+  tenantKey: string;
+  tenantName: string;
+  counties: string[];
+  leads: LeadWithEvent[];
+}
+
+/**
+ * The best leads in every market at once.
+ *
+ * /leads answered for the one tenant a chat happened to be connected to, which
+ * is the right answer for a customer and the wrong one for the person selling
+ * the leads. Ben is not one operator working one county, he is assembling
+ * inventory across Milwaukee, Syracuse, Buffalo and Detroit and needs to see
+ * all of it ranked in one place.
+ *
+ * Queried per tenant rather than as one join because scores are only comparable
+ * within a market: a 68 in Milwaukee and a 68 in Syracuse were produced by
+ * different weightings, so mixing them into a single ranked list would invent a
+ * comparison the scoring engine never made.
+ */
+export async function loadLeadsByMarket(
+  client: SupabaseClient,
+  perMarket: number,
+): Promise<MarketLeads[]> {
+  const { data, error } = await client
+    .from("tenants")
+    .select("id, name, fixture_key, counties")
+    .order("name");
+
+  if (error) throw new Error(`Failed to load tenants: ${error.message}`);
+
+  const markets: MarketLeads[] = [];
+  for (const row of data ?? []) {
+    const leads = await loadTopLeads(client, String(row.id), perMarket);
+    // A market with nothing to show is left out rather than listed empty. The
+    // digest already reports coverage gaps; this view is for what to act on.
+    if (leads.length === 0) continue;
+
+    markets.push({
+      tenantId: String(row.id),
+      tenantKey: String(row.fixture_key ?? row.id),
+      tenantName: String(row.name),
+      counties: (row.counties as string[]) ?? [],
+      leads,
+    });
+  }
+
+  return markets;
+}

@@ -1,7 +1,7 @@
 import { Bot } from "grammy";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { composeLeadsReply } from "../digest/compose";
-import { loadTopLeads } from "../digest/queries";
+import { composeAllMarketsReply, composeLeadsReply } from "../digest/compose";
+import { loadLeadsByMarket, loadTopLeads } from "../digest/queries";
 import { appUrl } from "../digest/send";
 import { loadPreset } from "../scoring/presets";
 import { log } from "../lib/log";
@@ -17,6 +17,24 @@ import { connectChat } from "./connect";
  * bot token locally. Nothing else in the worker constructs a Bot, only an Api,
  * so the digest and ping jobs cannot start a second poller by accident.
  */
+/**
+ * Chats that belong to whoever runs FirstKnock, rather than to a customer.
+ *
+ * An operator is not a subscriber to one county: they are assembling inventory
+ * across every market, so /leads has to answer "what is worth selling today"
+ * rather than "what is happening in your county". Kept in the environment
+ * instead of the schema because it is a property of the person, not the tenant,
+ * and there is exactly one of them today.
+ */
+function operatorChats(): Set<string> {
+  return new Set(
+    (process.env.OPERATOR_CHAT_IDS ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
+  );
+}
+
 export function createBot(token: string, client: SupabaseClient): Bot {
   const bot = new Bot(token);
 
@@ -74,8 +92,16 @@ export function createBot(token: string, client: SupabaseClient): Bot {
   bot.command("leads", async (ctx) => {
     const chatId = String(ctx.chat.id);
     const tenant = await tenantForChat(chatId);
-    if (!tenant) {
-      await ctx.reply("This chat is not connected yet. Send /start with your connect code.");
+
+    // Every market, for an operator or for a chat with no tenant of its own.
+    // Telling the person who sells the leads to go connect a county is the
+    // wrong answer when the question is "what is worth selling today".
+    if (!tenant || operatorChats().has(chatId)) {
+      const markets = await loadLeadsByMarket(client, 3);
+      await ctx.reply(composeAllMarketsReply(markets, 3, appUrl(), new Date()), {
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+      });
       return;
     }
 

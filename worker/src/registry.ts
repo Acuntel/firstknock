@@ -3,6 +3,7 @@ import { cookAdapters } from "./adapters/cook-socrata";
 import { wayneDetroitPermitsAdapter } from "./adapters/wayne-detroit";
 import { onondagaSyracuseViolationsAdapter } from "./adapters/onondaga-syracuse";
 import { milwaukeeAdapters } from "./adapters/milwaukee";
+import { erieBuffaloViolationsAdapter } from "./adapters/erie-buffalo";
 
 // Every county pack registers here. BUILD_SPEC section 3 keys the registry by
 // FIPS because that is what a tenant actually subscribes to: a county, not an
@@ -12,6 +13,7 @@ const ALL: readonly CountyAdapter[] = [
   wayneDetroitPermitsAdapter,
   onondagaSyracuseViolationsAdapter,
   ...milwaukeeAdapters,
+  erieBuffaloViolationsAdapter,
 ];
 
 const byId = new Map<string, CountyAdapter>();

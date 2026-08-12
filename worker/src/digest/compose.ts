@@ -203,3 +203,72 @@ export function composeLeadsReply(input: ComposeInput): string {
     ),
   ].join("\n\n");
 }
+
+export interface MarketBlock {
+  tenantKey: string;
+  tenantName: string;
+  counties: string[];
+  leads: ComposableLead[];
+}
+
+/**
+ * Every market's best leads in one message.
+ *
+ * Grouped by market rather than merged into one ranked list, because scores are
+ * only comparable within a market. A 68 in Milwaukee and a 68 in Syracuse came
+ * out of different weightings, and interleaving them would invent a comparison
+ * the scoring engine never made.
+ *
+ * Telegram rejects a message over 4096 characters, so this trims markets off the
+ * end rather than letting the send fail, and says how many it dropped. Silently
+ * truncating a lead list is how someone acts on a partial picture believing it
+ * is the whole one.
+ */
+export function composeAllMarketsReply(
+  markets: MarketBlock[],
+  perMarket: number,
+  appUrl: string,
+  now: Date,
+): string {
+  if (markets.length === 0) {
+    return "No market has a scored lead yet. Run the pipeline first.";
+  }
+
+  const header = `<b>Top opportunities across ${markets.length} market${
+    markets.length === 1 ? "" : "s"
+  }</b>`;
+
+  const blocks = markets.map((market) => {
+    const top = market.leads.slice(0, perMarket);
+    const lines = top.map(
+      (lead, index) =>
+        `${index + 1}. <b>${lead.score}</b> ${escapeHtml(eventTitle(lead.event))}\n` +
+        `<a href="${escapeHtml(`${appUrl}/leads/${lead.id}?tenant=${market.tenantKey}`)}">Open</a>` +
+        // A literal character, not &middot;. Telegram only decodes the handful of
+        // entities its HTML mode names, and anything else arrives as raw text.
+        ` \u00b7 ${escapeHtml(whyLine(lead.event, now))}`,
+    );
+    return [
+      `<b>${escapeHtml(market.tenantName)}</b>, ${escapeHtml(countiesLabel(market.counties))}`,
+      ...lines,
+    ].join("\n");
+  });
+
+  const LIMIT = 4000;
+  const kept: string[] = [];
+  let size = header.length;
+
+  for (const block of blocks) {
+    if (size + block.length + 2 > LIMIT) break;
+    kept.push(block);
+    size += block.length + 2;
+  }
+
+  const dropped = blocks.length - kept.length;
+  const footer =
+    dropped > 0
+      ? [`${dropped} more market${dropped === 1 ? "" : "s"} did not fit. Open the app for the rest.`]
+      : [];
+
+  return [header, ...kept, ...footer].join("\n\n");
+}

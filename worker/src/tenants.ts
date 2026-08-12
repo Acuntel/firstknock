@@ -45,6 +45,7 @@ const ROCKFORD: ServiceArea = { lat: 42.2711, lng: -89.094, radiusMiles: 30 };
 const DETROIT: ServiceArea = { lat: 42.3314, lng: -83.0458, radiusMiles: 30 };
 const MILWAUKEE: ServiceArea = { lat: 43.0389, lng: -87.9065, radiusMiles: 30 };
 const SYRACUSE: ServiceArea = { lat: 43.0481, lng: -76.1474, radiusMiles: 25 };
+const BUFFALO: ServiceArea = { lat: 42.8864, lng: -78.8784, radiusMiles: 25 };
 
 export const DESIGN_PARTNERS: DesignPartnerTenant[] = [
   {
@@ -238,6 +239,29 @@ export const MARKET_TENANTS: DesignPartnerTenant[] = [
       w.eventSeverity.CODE_VIOLATION = 75;
     }),
     note: "Placeholder until Ben names a real buyer. Syracuse city only: the violations feed belongs to the city, so Skaneateles and the rest of Onondaga are not covered.",
+  },
+  {
+    key: "buffalo",
+    name: "Buffalo Flippers",
+    plan: "solo",
+    verticalPresetId: "investors",
+    counties: ["36029"],
+    excludedTowns: [],
+    serviceArea: { ...BUFFALO },
+    digestHour: 7,
+    digestMinute: 0,
+    digestCadence: "daily",
+    digestChannels: ["telegram"],
+    digestEmail: null,
+    hotPingThreshold: 85,
+    complianceFooter: null,
+    weights: weightsFromPreset("investors", (w) => {
+      // Buffalo only publishes open cases here, so every event is a problem the
+      // owner still has. It also carries the state property class, which
+      // Syracuse does not, so class fit actually does work on this feed.
+      w.eventSeverity.CODE_VIOLATION = 70;
+    }),
+    note: "Placeholder until Ben names a real buyer. Buffalo city only, so Cheektowaga and Amherst are not covered. Closed cases are filtered out at the source.",
   },
 ];
 

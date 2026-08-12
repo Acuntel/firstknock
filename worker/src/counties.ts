@@ -17,6 +17,7 @@ const COUNTIES: Record<string, County> = {
   "17000": { name: "Illinois, statewide", state: "IL" },
   "26163": { name: "Wayne", state: "MI" },
   "36067": { name: "Onondaga", state: "NY" },
+  "36029": { name: "Erie", state: "NY" },
   "55079": { name: "Milwaukee", state: "WI" },
 };
 
