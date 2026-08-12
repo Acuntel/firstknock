@@ -76,11 +76,14 @@ export async function draftableProspects(
   // the wrong person by name.
   return (data ?? [])
     .map((row) => toProspect(row as Record<string, unknown>))
-    .map((prospect) =>
-      prospect.personName && !nameMatchesMailbox(prospect.personName, prospect.email)
-        ? { ...prospect, personName: null }
-        : prospect,
-    );
+    .map((prospect) => {
+      if (prospect.personName && nameMatchesMailbox(prospect.personName, prospect.email)) {
+        return prospect;
+      }
+      // A researched name that cannot be tied to the mailbox is dropped. The
+      // mailbox itself is then the only trustworthy source of a name left.
+      return { ...prospect, personName: nameFromMailbox(prospect.email) };
+    });
 }
 
 /**
@@ -102,6 +105,68 @@ export function nameMatchesMailbox(name: string, email: string | null): boolean 
 
   const parts = name.toLowerCase().split(/\s+/).filter((p) => p.length > 2);
   return parts.some((part) => local.includes(part));
+}
+
+/**
+ * Common first names, for reading a name off the mailbox itself.
+ *
+ * A whitelist rather than a heuristic, because the failure mode of guessing is
+ * greeting a company "Hi Greengenie" or "Hi Info". Short and unglamorous, and
+ * it only has to cover the names that actually appear in front of an @ on a
+ * contractor's website.
+ */
+const FIRST_NAMES = new Set([
+  "aaron","adam","alan","albert","alex","andrew","andy","anthony","antonio","arthur",
+  "barry","ben","bill","billy","bob","bobby","brad","brandon","brian","bruce","bryan",
+  "carl","carlos","chad","charles","charlie","chris","craig","curtis","dan","daniel",
+  "danny","darren","dave","david","dean","dennis","derek","don","donald","doug","douglas",
+  "drew","earl","ed","eddie","eric","erik","ernie","frank","fred","gary","gene","george",
+  "gerald","glen","glenn","greg","gregory","harold","harry","henry","herb","howard",
+  "jack","jacob","jake","james","jamie","jason","javier","jay","jeff","jeffrey","jerry",
+  "jesse","jim","jimmy","joe","joel","john","johnny","jon","jonathan","jordan","jose",
+  "joseph","josh","joshua","juan","justin","keith","kelly","ken","kenny","kevin","kurt",
+  "kyle","lance","larry","lee","leo","leon","leonard","lewis","lou","louis","luis","luke",
+  "manny","marc","marco","mark","martin","marty","matt","matthew","maurice","max","mel",
+  "michael","mickey","mike","miguel","mitch","nate","nathan","neil","nick","nicholas",
+  "norm","oscar","pat","patrick","paul","pedro","pete","peter","phil","phillip","ralph",
+  "randy","ray","raymond","rich","richard","rick","ricky","rob","robert","rodney","roger",
+  "ron","ronald","ronnie","ross","roy","russ","russell","ryan","sal","sam","samuel","scott",
+  "sean","shane","shaun","shawn","stan","stanley","steve","steven","stephen","stu","ted",
+  "terry","thomas","tim","timothy","todd","tom","tommy","tony","travis","trevor","troy",
+  "vince","vincent","wade","walter","warren","wayne","wes","will","william","willie","zach",
+  "amanda","amy","andrea","angela","ann","anna","anne","april","barbara","beth","betty",
+  "beverly","brenda","carol","carolyn","catherine","cathy","cheryl","christine","cindy",
+  "claire","colleen","connie","cynthia","dawn","deb","debbie","deborah","debra","denise",
+  "diana","diane","donna","doris","dorothy","elaine","elizabeth","ellen","emily","erin",
+  "gail","gina","gloria","heather","heidi","helen","holly","jackie","jane","janet","janice",
+  "jean","jeanne","jen","jenn","jennifer","jessica","jill","joan","joanne","jodi","joy",
+  "joyce","judy","julie","june","karen","kate","kathy","katherine","kathleen","kelli",
+  "kim","kimberly","kris","kristen","kristin","laura","lauren","laurie","linda","lisa",
+  "lori","lynn","marcia","margaret","maria","marie","marilyn","marsha","martha","mary",
+  "maureen","megan","melissa","michelle","monica","nancy","nicole","pam","pamela","patricia",
+  "patty","paula","peggy","rachel","rebecca","regina","renee","rhonda","rita","robin",
+  "rosa","rose","ruth","sally","sandra","sandy","sara","sarah","sharon","sheila","shelly",
+  "sherry","shirley","stacy","stephanie","sue","susan","suzanne","tammy","teresa","terri",
+  "theresa","tina","tracy","valerie","vicki","victoria","wendy",
+]);
+
+/**
+ * A first name taken from the mailbox, when the mailbox plainly is one.
+ *
+ * mike@ is not a guess about who works there, it is what they wrote on their
+ * own website, so greeting them "Hi Mike" is using their words rather than
+ * inventing a person. That matters: a named greeting reads as a human wrote it
+ * and "Hi," reads as a mail merge.
+ *
+ * The whitelist is what keeps it honest. Without it the same logic produces
+ * "Hi Greengenie" and "Hi Jdlandscaping93".
+ */
+export function nameFromMailbox(email: string | null): string | null {
+  if (!email) return null;
+  const local = email.split("@")[0]?.toLowerCase() ?? "";
+  if (!/^[a-z]{3,10}$/.test(local)) return null;
+  if (!FIRST_NAMES.has(local)) return null;
+  return local.charAt(0).toUpperCase() + local.slice(1);
 }
 
 export async function markDrafted(

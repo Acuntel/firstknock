@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mail-draft";
 import { citationLabel, statsSentence, type MarketStats } from "../src/prospect/market-stats";
 import { assemblePitch, wrap, type Prospect } from "../src/prospect/pitch";
-import { nameMatchesMailbox } from "../src/prospect/store";
+import { nameFromMailbox, nameMatchesMailbox } from "../src/prospect/store";
 import { scrapeCompanyName } from "../src/prospect/scraper";
 
 const SENDER = {
@@ -279,5 +279,24 @@ describe("quoting a citation back to a contractor", () => {
     expect(citationLabel({ violation: "GENERAL", complaint_type_name: "Tall Grass and Weeds" })).toBe(
       "Tall Grass and Weeds",
     );
+  });
+});
+
+describe("reading a first name off the mailbox", () => {
+  it("uses a mailbox that plainly is a first name", () => {
+    // mike@ is not a guess about who works there, it is what they published.
+    expect(nameFromMailbox("mike@greengeniewny.com")).toBe("Mike");
+    expect(nameFromMailbox("Sarah@example.com")).toBe("Sarah");
+  });
+
+  it("refuses anything that is not a name", () => {
+    // Without the whitelist the same logic produces "Hi Greengenie" and
+    // "Hi Jdlandscaping93", which is worse than not greeting anyone.
+    expect(nameFromMailbox("greengenie@example.com")).toBeNull();
+    expect(nameFromMailbox("jdlandscaping93@example.com")).toBeNull();
+    expect(nameFromMailbox("info@example.com")).toBeNull();
+    expect(nameFromMailbox("sales@example.com")).toBeNull();
+    expect(nameFromMailbox("mm@example.com")).toBeNull();
+    expect(nameFromMailbox(null)).toBeNull();
   });
 });

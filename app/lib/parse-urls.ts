@@ -23,6 +23,28 @@ const DIRECTORIES = [
   "google.", "bing.", "duckduckgo.", "amazon.", "craigslist.",
 ];
 
+/**
+ * National franchises, which look like local businesses and are not.
+ *
+ * A SERVPRO or Junk King branch cannot buy a data subscription: corporate
+ * decides what tools a franchisee uses, and the branch owner has no budget line
+ * for it. They rank highly in every local search precisely because they buy the
+ * ads, so without this they would crowd out the independents who can actually
+ * say yes.
+ */
+const FRANCHISES = [
+  "servpro", "puroclean", "pauldavis", "rainbowrestores", "911restoration",
+  "servicemaster", "steamatic", "belfor", "chemdry", "stanleysteemer",
+  "junk-king", "junkking", "jdogjunkremoval", "collegehunkshaulingjunk", "1800gotjunk",
+  "spring-green", "springgreen", "lawnstarter", "trugreen", "weedman",
+  "lawndoctor", "mosquitojoe", "terminix", "orkin", "rentokil", "aptive",
+  "mrhandyman", "aireserv", "aire-serv", "mollymaid", "roto-rooter", "rotorooter",
+];
+
+function isFranchise(host: string): boolean {
+  return FRANCHISES.some((name) => host.includes(name));
+}
+
 function isDirectory(host: string): boolean {
   return DIRECTORIES.some((needle) =>
     needle.endsWith(".") ? host.startsWith(needle) || host.includes(`.${needle}`) : host.includes(needle),
@@ -45,7 +67,7 @@ export function parseUrls(input: string): string[] {
   for (const url of cleaned) {
     try {
       const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-      if (isDirectory(host)) continue;
+      if (isDirectory(host) || isFranchise(host)) continue;
       if (!byHost.has(host)) byHost.set(host, url);
     } catch {
       // Not a real URL, so not a company.
