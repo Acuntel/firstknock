@@ -149,3 +149,32 @@ export function matchesSegment(segment: BuyerSegment, citation: string | undefin
   const text = citation.toLowerCase();
   return segment.citationKeywords.some((word) => text.includes(word));
 }
+
+export interface Market {
+  fips: string;
+  /** The city the feed actually covers, which is rarely the whole county. */
+  city: string;
+  state: string;
+  label: string;
+}
+
+/**
+ * The markets there is data to sell.
+ *
+ * The city rather than the county on purpose. Every one of these feeds is
+ * published by a city, so Skaneateles is not in the Syracuse data and
+ * Cheektowaga is not in the Buffalo data, and importing a suburban contractor
+ * against a city feed would promise them coverage that does not exist.
+ */
+export const MARKETS: Market[] = [
+  { fips: "55079", city: "Milwaukee", state: "WI", label: "Milwaukee, WI" },
+  { fips: "36029", city: "Buffalo", state: "NY", label: "Buffalo, NY" },
+  { fips: "36067", city: "Syracuse", state: "NY", label: "Syracuse, NY" },
+  { fips: "26163", city: "Detroit", state: "MI", label: "Detroit, MI" },
+];
+
+export function market(fips: string): Market {
+  const found = MARKETS.find((m) => m.fips === fips);
+  if (!found) throw new Error(`No market with FIPS ${fips}`);
+  return found;
+}

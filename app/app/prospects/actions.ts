@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { isOperator, operatorClient } from "@/lib/operator";
-import { segment as findSegment } from "@firstknock/worker/prospect/buyers";
+import { market as findMarket, segment as findSegment } from "@firstknock/worker/prospect/buyers";
+import { importSites } from "@firstknock/worker/prospect/import";
+import { parseUrls } from "@/lib/parse-urls";
 import { appendDraft, mailboxCredentials } from "@firstknock/worker/prospect/mail-draft";
 import { segmentStats } from "@firstknock/worker/prospect/market-stats";
 import { assemblePitch, draftPitch } from "@firstknock/worker/prospect/pitch";
@@ -118,4 +120,69 @@ export async function suppressProspect(email: string): Promise<void> {
   if (!(await isOperator())) return;
   await suppress(operatorClient(), email, "suppressed from the app", new Date());
   revalidatePath("/prospects");
+}
+
+export interface ImportResult {
+  outcomes: Array<{ url: string; status: string; company?: string; email?: string }>;
+  error: string | null;
+  /** Sites the paste contained beyond the batch cap, so nothing vanishes silently. */
+  notAttempted: number;
+}
+
+/** How many sites one click will work through. */
+const IMPORT_BATCH = 12;
+
+
+/**
+ * Reads each site, verifies what it finds, and stores anything contactable.
+ *
+ * Slow by nature: every site is several page fetches and a DNS lookup, done one
+ * at a time because these are small business servers. A dozen takes a couple of
+ * minutes, which is why the batch is capped and the overflow is reported rather
+ * than dropped.
+ */
+export async function importProspects(
+  pasted: string,
+  fips: string,
+  segmentId: string,
+): Promise<ImportResult> {
+  if (!(await isOperator())) {
+    return { outcomes: [], error: "You are not signed in as an operator.", notAttempted: 0 };
+  }
+
+  let where;
+  try {
+    where = findMarket(fips);
+    findSegment(segmentId);
+  } catch (error) {
+    return {
+      outcomes: [],
+      error: error instanceof Error ? error.message : String(error),
+      notAttempted: 0,
+    };
+  }
+
+  const urls = parseUrls(pasted);
+  if (urls.length === 0) {
+    return { outcomes: [], error: "No web addresses found in that.", notAttempted: 0 };
+  }
+
+  const batch = urls.slice(0, IMPORT_BATCH);
+  const outcomes = await importSites(
+    operatorClient(),
+    batch.map((url) => ({
+      url,
+      fips,
+      city: where.city,
+      state: where.state,
+      segment: segmentId,
+    })),
+  );
+
+  revalidatePath("/prospects");
+  return {
+    outcomes,
+    error: null,
+    notAttempted: urls.length - batch.length,
+  };
 }

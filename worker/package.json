@@ -27,7 +27,8 @@
     "./prospect/mail-draft": "./src/prospect/mail-draft.ts",
     "./prospect/market-stats": "./src/prospect/market-stats.ts",
     "./prospect/pitch": "./src/prospect/pitch.ts",
-    "./prospect/store": "./src/prospect/store.ts"
+    "./prospect/store": "./src/prospect/store.ts",
+    "./prospect/import": "./src/prospect/import.ts"
   },
   "scripts": {
     "once": "tsx src/run-once.ts",

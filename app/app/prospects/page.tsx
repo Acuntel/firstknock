@@ -1,10 +1,11 @@
 import { Shell } from "@/components/shell";
 import { DraftButton } from "@/components/draft-button";
+import { ImportForm } from "@/components/import-form";
 import { isOperator, operatorClient } from "@/lib/operator";
 import { isFixtureMode } from "@/lib/data";
 import { resolveTenant } from "@/lib/tenant";
 import { countyName } from "@/lib/counties";
-import { BUYER_SEGMENTS } from "@firstknock/worker/prospect/buyers";
+import { BUYER_SEGMENTS, MARKETS } from "@firstknock/worker/prospect/buyers";
 
 export const runtime = "nodejs";
 
@@ -67,6 +68,13 @@ export default async function ProspectsPage({
 
       <div className="mb-8">
         <DraftButton ready={ready} />
+      </div>
+
+      <div className="mb-8">
+        <ImportForm
+          markets={MARKETS.map((m) => ({ value: m.fips, label: m.label }))}
+          segments={BUYER_SEGMENTS.map((s) => ({ value: s.id, label: s.label }))}
+        />
       </div>
 
       {rows.length === 0 ? (
