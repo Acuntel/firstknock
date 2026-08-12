@@ -1,0 +1,161 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { generateJson, type MeteredTenant } from "../ai/client";
+import { statsSentence, type MarketStats } from "./market-stats";
+
+export interface Prospect {
+  id: string;
+  company: string;
+  website: string | null;
+  city: string | null;
+  personName: string | null;
+  personRole: string | null;
+  email: string | null;
+}
+
+export interface PitchOpening {
+  subject: string;
+  /** Two sentences at most, referencing something real about their business. */
+  hook: string;
+}
+
+export interface Pitch extends PitchOpening {
+  to: string;
+  body: string;
+}
+
+const SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["subject", "hook"],
+  properties: {
+    subject: { type: "string", maxLength: 60 },
+    hook: { type: "string", maxLength: 320 },
+  },
+} as const;
+
+/**
+ * The rules that keep every send on message.
+ *
+ * EMAIL_BOT_SAUCE.md calls this locked structure generation and it is the part
+ * worth copying: the model writes exactly two things, a subject and a two
+ * sentence opening. The pitch, the numbers, the pricing, the opt out and the
+ * signature are all deterministic template below. That is what guarantees no
+ * hallucinated claim about coverage or price ever reaches a prospect, because
+ * the model is never given the chance to write one.
+ */
+const SYSTEM = [
+  "You write the opening two sentences of a cold business email, nothing else.",
+  "The sender sells verified property lead data to house flippers and contractors.",
+  "",
+  "Rules, all of them absolute:",
+  "- Reference only facts given to you about the recipient's business. Invent nothing.",
+  "- If you have no real detail about them, write a plain opening about their market instead of guessing.",
+  "- Never state a number about the data. Those are inserted after you and you will get them wrong.",
+  "- No em dashes, no en dashes, no exclamation marks, no 'Dear', no 'I hope this finds you'.",
+  "- No hype adjectives: no 'exciting', 'incredible', 'game changing', 'revolutionary', 'unlock'.",
+  "- Subject under 60 characters, lower key than a marketing line, no colon stacking.",
+  "- Plain sentences an operator would actually write. Two sentences maximum in the hook.",
+].join("\n");
+
+function prompt(prospect: Prospect, stats: MarketStats): string {
+  const known = [
+    `Company: ${prospect.company}`,
+    prospect.personName ? `Person: ${prospect.personName}` : null,
+    prospect.personRole ? `Their role: ${prospect.personRole}` : null,
+    prospect.city ? `Their city: ${prospect.city}` : null,
+    prospect.website ? `Their website: ${prospect.website}` : null,
+    `Market being offered: ${stats.county}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return [
+    "Write the subject and the two sentence opening for an email to this business.",
+    "",
+    known,
+    "",
+    "The email offers them a daily list of distressed and in play properties in",
+    "their county, scored and with owner contact details where the county",
+    "publishes them. Do not describe the size of that list, that comes later.",
+  ].join("\n");
+}
+
+/**
+ * The deterministic part, which is most of the email.
+ *
+ * Everything a prospect could act on or complain about lives here and not in
+ * the model: what is being offered, the checkable numbers, the price
+ * conversation, and a working opt out. The opt out is honoured for good, and
+ * the physical address is required of commercial email in the United States.
+ */
+export function assemblePitch(
+  prospect: Prospect,
+  stats: MarketStats,
+  opening: PitchOpening,
+  sender: { name: string; email: string; postalAddress: string },
+): string {
+  return [
+    prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
+    "",
+    opening.hook,
+    "",
+    `I track ${stats.county} and pull the public records that say a property is`,
+    "in trouble or about to move. Right now:",
+    "",
+    statsSentence(stats),
+    "",
+    "Each one is scored, deduplicated, and delivered every morning to your phone",
+    "or inbox. You would get the address, what happened, when, and the owner's",
+    "mailing details where the county publishes them.",
+    "",
+    "If that is useful I will send you a week of it at no cost so you can check",
+    "the addresses against what you already know. If it is not, no follow up.",
+    "",
+    `${sender.name}`,
+    `${sender.email}`,
+    "",
+    "If this is not relevant, reply no and I will not email you again.",
+    sender.postalAddress,
+  ].join("\n");
+}
+
+/**
+ * Writes the opening for one prospect.
+ *
+ * Metered like every other Claude call, so a runaway prospecting run shows up
+ * in usage_ledger and hits the same monthly cap as everything else.
+ */
+export async function draftPitch(
+  db: SupabaseClient,
+  tenant: MeteredTenant,
+  prospect: Prospect,
+  stats: MarketStats,
+  now: Date,
+): Promise<PitchOpening> {
+  const { value } = await generateJson<PitchOpening>(db, {
+    tenant,
+    op: "prospect_pitch",
+    system: SYSTEM,
+    prompt: prompt(prospect, stats),
+    schema: SCHEMA as unknown as Record<string, unknown>,
+    maxTokens: 400,
+    now,
+    validate: (raw) => {
+      const value = raw as PitchOpening;
+      if (typeof value?.subject !== "string" || typeof value?.hook !== "string") {
+        throw new Error("Model returned no subject or hook");
+      }
+      // The style rules are enforced here, not just requested in the prompt. A
+      // model that drifts should fail the call rather than quietly send an
+      // email that reads like every other piece of cold outreach.
+      const text = `${value.subject} ${value.hook}`;
+      if (/[—–]/.test(text)) throw new Error("Model used a dash it was told not to");
+      if (text.includes("!")) throw new Error("Model used an exclamation mark");
+      if (/\bDear\b/i.test(text)) throw new Error("Model opened with Dear");
+      if (value.subject.length > 60) throw new Error("Subject too long");
+      return value;
+    },
+  });
+
+  return value;
+}

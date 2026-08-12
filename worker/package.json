@@ -39,7 +39,8 @@
     "score": "tsx src/run-pipeline.ts",
     "cron": "tsx src/run-cron.ts",
     "invite": "tsx src/invite.ts",
-    "connect": "tsx src/connect-telegram.ts"
+    "connect": "tsx src/connect-telegram.ts",
+    "prospect": "tsx src/run-prospect.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
