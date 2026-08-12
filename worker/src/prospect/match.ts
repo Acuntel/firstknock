@@ -147,3 +147,22 @@ export async function allBoards(
   }
   return boards;
 }
+
+/**
+ * The strongest lead a given company could be written to about.
+ *
+ * Batch drafting used the market wide pitch, which asks a contractor to believe
+ * a number, while the button on the daily desk used a specific property. There
+ * is no reason for the batch to send the weaker email, so both go through this.
+ *
+ * Null means nothing in their market is their kind of work today, which is a
+ * real answer: the market pitch is the fallback, not a failure.
+ */
+export function bestLeadFor(boards: MarketBoard[], prospectId: string): MatchedLead | null {
+  for (const board of boards) {
+    for (const lead of board.leads) {
+      if (lead.buyers.some((buyer) => buyer.prospect.id === prospectId)) return lead;
+    }
+  }
+  return null;
+}

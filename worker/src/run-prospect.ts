@@ -7,6 +7,8 @@ import { BUYER_SEGMENTS, segment as findSegment } from "./prospect/buyers";
 import { assemblePitch, draftPitch } from "./prospect/pitch";
 import { draftableProspects, markDrafted, suppress } from "./prospect/store";
 import { importSites, type ImportTarget } from "./prospect/import";
+import { allBoards, bestLeadFor } from "./prospect/match";
+import { assembleLeadPitch } from "./prospect/pitch";
 import { readFileSync } from "node:fs";
 
 loadEnv({ path: new URL("../../.env", import.meta.url).pathname, quiet: true });
@@ -66,6 +68,10 @@ async function draft(limit: number, fips?: string): Promise<void> {
   }
 
   const prospects = await draftableProspects(client, limit, fips);
+
+  // Computed once for the whole run rather than per prospect, so a batch of ten
+  // is one pass over the boards instead of ten.
+  const boards = await allBoards(client, 8, await draftableProspects(client, 500));
   if (prospects.length === 0) {
     process.stdout.write(
       "Nothing draftable. A prospect needs a verified address, a named person,\n" +
@@ -97,7 +103,26 @@ async function draft(limit: number, fips?: string): Promise<void> {
       }
 
       const opening = await draftPitch(client, tenant, prospect, stats, buyer, now);
-      const body = assemblePitch(prospect, stats, opening, from);
+
+      // A specific property beats a county total, so the per lead email is used
+      // whenever this company has a lead of their own to be told about.
+      const lead = bestLeadFor(boards, prospect.id);
+      const body = lead
+        ? assembleLeadPitch(
+            prospect,
+            {
+              address: lead.event.property.address ?? "",
+              city: lead.event.property.city ?? null,
+              citation: lead.citation || buyer.label,
+              occurredAt: lead.event.occurredAt,
+              hasOwner: lead.event.parties.length > 0,
+            },
+            stats,
+            opening,
+            from,
+            now,
+          )
+        : assemblePitch(prospect, stats, opening, from);
 
       await appendDraft(
         credentials,

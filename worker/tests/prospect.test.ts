@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildMime, findDraftsFolder, hostForAddress } from "../src/prospect/mail-draft";
 import { citationLabel, statsSentence, type MarketStats } from "../src/prospect/market-stats";
-import { assembleLeadPitch, assemblePitch, streetOnly, wrap, type Prospect } from "../src/prospect/pitch";
+import { assembleLeadPitch, assemblePitch, streetOnly, withoutDuplicateGreeting, wrap, type Prospect } from "../src/prospect/pitch";
 import { nameFromMailbox, nameMatchesMailbox } from "../src/prospect/store";
 import { extractEmails, scrapeCompanyName } from "../src/prospect/scraper";
 
@@ -375,5 +375,32 @@ describe("what the lead email gives away", () => {
     );
     expect(noPhone).toMatch(/set up a short call/);
     expect(noPhone).not.toContain("call me on");
+  });
+});
+
+describe("greeting the same person twice", () => {
+  it("drops a name the model repeated on top of the template's", () => {
+    // The template writes "Hi Mike," and the model sometimes opens "Mike, Erie
+    // just posted", which lands as "Hi Mike, Mike, Erie just posted".
+    expect(withoutDuplicateGreeting("Mike, Erie just posted citations.", "Mike Bowers")).toBe(
+      "Erie just posted citations.",
+    );
+    expect(withoutDuplicateGreeting("Hi Mike, Erie just posted.", "Mike Bowers")).toBe(
+      "Erie just posted.",
+    );
+  });
+
+  it("leaves an opening that does not repeat the name", () => {
+    expect(withoutDuplicateGreeting("Erie just posted citations.", "Mike Bowers")).toBe(
+      "Erie just posted citations.",
+    );
+  });
+
+  it("never empties the hook", () => {
+    expect(withoutDuplicateGreeting("Mike,", "Mike Bowers")).toBe("Mike,");
+  });
+
+  it("does nothing when nobody is named", () => {
+    expect(withoutDuplicateGreeting("Mike, hello.", null)).toBe("Mike, hello.");
   });
 });

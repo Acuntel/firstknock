@@ -7,6 +7,7 @@ import { importSites } from "@firstknock/worker/prospect/import";
 import { parseUrls } from "@/lib/parse-urls";
 import { appendDraft, mailboxCredentials } from "@firstknock/worker/prospect/mail-draft";
 import { citationLabel, segmentStats } from "@firstknock/worker/prospect/market-stats";
+import { allBoards, bestLeadFor } from "@firstknock/worker/prospect/match";
 import { assembleLeadPitch, assemblePitch, draftPitch } from "@firstknock/worker/prospect/pitch";
 import { draftableProspects, markDrafted, nameFromMailbox, suppress } from "@firstknock/worker/prospect/store";
 
@@ -69,6 +70,10 @@ export async function draftEmails(count: number): Promise<DraftResult> {
   const { data: tenantRow } = await client.from("tenants").select("id, plan").limit(1).single();
   const tenant = { id: String(tenantRow?.id), plan: String(tenantRow?.plan ?? "solo") };
 
+  // One pass for the whole batch, so the button sends the same specific email
+  // the daily desk does rather than a weaker county wide one.
+  const boards = await allBoards(client, 8, await draftableProspects(client, 500));
+
   let drafted = 0;
   const skipped: DraftResult["skipped"] = [];
 
@@ -87,7 +92,24 @@ export async function draftEmails(count: number): Promise<DraftResult> {
       }
 
       const opening = await draftPitch(client, tenant, prospect, stats, buyer, now);
-      const body = assemblePitch(prospect, stats, opening, from);
+
+      const lead = bestLeadFor(boards, prospect.id);
+      const body = lead
+        ? assembleLeadPitch(
+            prospect,
+            {
+              address: lead.event.property.address ?? "",
+              city: lead.event.property.city ?? null,
+              citation: lead.citation || buyer.label,
+              occurredAt: lead.event.occurredAt,
+              hasOwner: lead.event.parties.length > 0,
+            },
+            stats,
+            opening,
+            from,
+            now,
+          )
+        : assemblePitch(prospect, stats, opening, from);
 
       await appendDraft(
         credentials,

@@ -134,7 +134,7 @@ export function assemblePitch(
 ): string {
   const paragraphs = [
     prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
-    opening.hook,
+    withoutDuplicateGreeting(opening.hook, prospect.personName),
     segmentLine(stats),
     statsSentence(stats),
     "Each one is scored, deduplicated, and delivered every morning to your phone or" +
@@ -235,6 +235,26 @@ export interface LeadSample {
 }
 
 /**
+ * Drops a greeting the model added on top of the one the template already wrote.
+ *
+ * Told to open with two sentences to a named person, it sometimes starts them
+ * "Mike, Erie just posted...", which lands under the template's own "Hi Mike,"
+ * and reads "Hi Mike, Mike, Erie just posted". Stripping it here works whatever
+ * the model does, which asking it again in the prompt would not.
+ */
+export function withoutDuplicateGreeting(hook: string, personName: string | null): string {
+  if (!personName) return hook;
+  const first = personName.split(/\s+/)[0];
+  if (!first) return hook;
+
+  const opener = new RegExp(`^(hi|hey|hello)?[,\\s]*${first}\\s*[,:-]\\s*`, "i");
+  const trimmed = hook.replace(opener, "").trim();
+  if (trimmed === "") return hook;
+
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+/**
  * Strips the house number off an address.
  *
  * "418 Merriman Ave" becomes "Merriman Ave". Enough to prove the record is real
@@ -284,7 +304,7 @@ export function assembleLeadPitch(
 
   const paragraphs = [
     prospect.personName ? `Hi ${prospect.personName.split(" ")[0]},` : "Hi,",
-    opening.hook,
+    withoutDuplicateGreeting(opening.hook, prospect.personName),
     `One from ${when}: a property on ${where}, cited for ${sample.citation.toLowerCase()}.` +
       (sample.hasOwner ? " The county publishes the owner's name and mailing address with it." : ""),
     others > 0
